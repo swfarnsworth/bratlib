@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import re
 import os
 import typing as t
 from dataclasses import dataclass, field
 from pathlib import Path
 from abc import abstractmethod
+from operator import attrgetter
 
 from cached_property import cached_property
 
@@ -20,7 +23,6 @@ norm_pattern = re.compile(r'N\d+\tReference T(\d+) ((?:[^:])+):((?:[^\t])+)\t.+'
 
 
 # Define annotation types
-
 
 class AnnData:
 
@@ -85,9 +87,10 @@ class Equivalence(AnnData):
 @dataclass
 class Attribute(AnnData):
     tag: str
-    items: t.List[Event]
+    items: t.List[AnnData]
 
     def __key__(self):
+        # TODO
         return
 
 
@@ -113,32 +116,98 @@ class BratFile:
         self._mapping = {}
 
     @cached_property
-    def _data_dict(self) -> t.Dict[str]:
+    def _data_dict(self) -> t.Dict[str, t.List[AnnData]]:
         with self.ann_path.open() as f:
             text = f.read()
 
-    @cached_property
-    def entities(self) -> t.Iterable[Entity]:
-        with self.ann_path.open() as f:
-            ann_content = f.read()
+        data_dict = {}
 
-        ent_mapping = {match.group(1): Entity.from_re(match) for match in ent_pattern.finditer(ann_content)}
+        # Entities
+        ent_mapping = {match[1]: Entity.from_re(match) for match in ent_pattern.finditer(text)}
         self._mapping.update(ent_mapping)
+        data_dict['entities'] = sorted(ent_mapping.values(), key=Entity.__key__)
 
-        return sorted(ent_mapping.values(), key=Entity.__key__)
-
-    @cached_property
-    def relations(self) -> t.Iterable[Relation]:
-        with self.ann_path.open() as f:
-            ann_content = f.read()
-
+        # Relations
         rels = []
 
-        for match in rel_pattern.finditer(ann_content):
+        for match in rel_pattern.finditer(text):
             tag = match[1]
             arg1 = self._mapping[match[2]]
-            arg2 = self._mapping[match[2]]
+            arg2 = self._mapping[match[3]]
             new_rel = Relation(tag, arg1, arg2)
             rels.append(new_rel)
+        data_dict['relations'] = sorted(rels, key=Relation.__key__)
 
-        return sorted(rels, key=Relation.__key__)
+        # Equivalences
+        equivs = []
+
+        for match in equiv_pattern.finditer(text):
+            equiv_entities = [self._mapping[e] for e in re.finditer(r'T\d+', match[1])]
+            equiv_entities.sort(key=Entity.__key__)
+            equivs.append(Equivalence(equiv_entities))
+
+        self._data_dict['equivalences'] = sorted(equivs, key=Equivalence.__key__)
+
+        # Attributes
+        attrs = []
+
+        for match in attrib_pattern.finditer(text):
+            tag = match[1]
+            data = [self._mapping[e] for e in re.finditer(r'[ET]\d+', match[2])]
+            attrs.append(Attribute(tag, data))
+
+        data_dict['attributes'] = attrs
+
+        # TODO norms
+
+        return data_dict
+
+    @property
+    def entities(self) -> t.Iterable[Entity]:
+        return self._data_dict['entities']
+
+    @property
+    def relations(self) -> t.Iterable[Relation]:
+        return self._data_dict['relations']
+
+    @property
+    def equivalences(self) -> t.Iterable[Equivalence]:
+        return self._data_dict['equivalences']
+
+    @property
+    def attributes(self) -> t.Iterable[Attribute]:
+        return self._data_dict['attributes']
+
+    @property
+    def normalizations(self) -> t.Iterable[Normalization]:
+        # return self._data_dict['normalizations']
+        raise NotImplementedError
+
+
+class BratDataset:
+
+    def __init__(self, dir_path: PathLike, brat_files: t.List[BratFile]):
+        self.directory = Path(dir_path)
+        self.brat_files = brat_files
+
+    @classmethod
+    def from_directory(cls, dir_path: PathLike) -> BratDataset:
+        directory = Path(dir_path)
+
+        brat_files = []
+
+        for file in directory.iterdir():
+            if file.suffix != '.ann':
+                continue
+
+            possible_txt = Path(str(file).rstrip('ann') + 'txt')
+            txt_path = possible_txt if possible_txt.exists() else None
+
+            brat_files.append(BratFile(file, txt_path))
+
+        brat_files.sort()
+
+        return cls(directory, brat_files)
+
+    def __iter__(self) -> t.Iterator[BratFile]:
+        return iter(self.brat_files)
