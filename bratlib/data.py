@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import re
 import os
+import re
 import typing as t
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from abc import abstractmethod
-from operator import attrgetter
 
 from cached_property import cached_property
 
@@ -106,14 +105,41 @@ class Normalization(AnnData):
 
 # Define file-level representation
 
+
+class NoTxtError(FileNotFoundError):
+    pass
+
+
 class BratFile:
 
     def __init__(self, ann_path: PathLike, txt_path: PathLike):
         self.ann_path = Path(ann_path)
-        self.txt_path = Path(txt_path)
+        self._txt_path = Path(txt_path) if isinstance(txt_path, (str, os.PathLike)) else None
         self.name = self.ann_path.name
 
         self._mapping = {}
+
+    @classmethod
+    def from_ann_path(cls, ann_path: PathLike):
+        ann_path = Path(ann_path)
+        possible_txt = Path(str(ann_path).rstrip('ann') + 'txt')
+        txt_path = possible_txt if possible_txt.exists() else None
+        return cls(ann_path, txt_path)
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}: {self.name}, {self._txt_path}>'
+
+    def __lt__(self, other):
+        try:
+            return self.name < other.name
+        except:
+            return NotImplemented
+
+    @property
+    def txt_path(self):
+        if self._txt_path is None:
+            raise NoTxtError('This BratFile does not have an associated txt file')
+        return self._txt_path
 
     @cached_property
     def _data_dict(self) -> t.Dict[str, t.List[AnnData]]:
@@ -193,20 +219,8 @@ class BratDataset:
     @classmethod
     def from_directory(cls, dir_path: PathLike) -> BratDataset:
         directory = Path(dir_path)
-
-        brat_files = []
-
-        for file in directory.iterdir():
-            if file.suffix != '.ann':
-                continue
-
-            possible_txt = Path(str(file).rstrip('ann') + 'txt')
-            txt_path = possible_txt if possible_txt.exists() else None
-
-            brat_files.append(BratFile(file, txt_path))
-
+        brat_files = [BratFile.from_ann_path(p) for p in directory.iterdir() if p.suffix == '.ann']
         brat_files.sort()
-
         return cls(directory, brat_files)
 
     def __iter__(self) -> t.Iterator[BratFile]:
