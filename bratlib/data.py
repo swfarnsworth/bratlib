@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import typing as t
-from abc import abstractmethod
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,7 +15,7 @@ PathLike = t.Union[str, os.PathLike]
 # Define regexes
 ent_pattern = re.compile(r'(T\d+)\t([^\t]+) ((?:\d+ \d+;)*\d+ \d+)\t(.+)')
 event_pattern = re.compile(r'(E\d+)\t[^\t:]+:T(\d+) ((?:[^\s:]+:T(?:\d+)[\s]*)+)')
-rel_pattern = re.compile(r'R\d+\t(\S+) Arg1:(T\d+) Arg2:(T\d+)')  # TODO fix this
+rel_pattern = re.compile(r'R\d+\t(\S+) Arg1:(T\d+) Arg2:(T\d+)')
 equiv_pattern = re.compile(r'\*\tEquiv ((?:T\d+[\s])+)')
 attrib_pattern = re.compile(r'A\d+\t(\S+) ((?:[TE]\d+[\s])+)')
 norm_pattern = re.compile(r'N\d+\tReference T(\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
@@ -24,13 +24,7 @@ norm_pattern = re.compile(r'N\d+\tReference T(\d+) ((?:[^:])+):((?:[^\t])+)\t.+'
 # Define annotation types
 
 class AnnData:
-
-    @abstractmethod
-    def __key__(self) -> t.Tuple:
-        pass
-
-    def __le__(self, other):
-        return self.__key__() < other.__key__()
+    pass
 
 
 @dataclass
@@ -52,8 +46,10 @@ class Entity(AnnData):
 
         return cls(tag, spans, mention)
 
-    def __key__(self):
-        return tuple([*self.spans, self.tag])
+    def __lt__(self, other):
+        with suppress(AttributeError):
+            return (self.spans[0], self.spans[-1], self.tag) < (other.spans[0], other.spans[-1], other.tag)
+        return NotImplemented
 
 
 @dataclass
@@ -61,8 +57,10 @@ class Event(AnnData):
     trigger: Entity
     arguments: t.List[Entity]
 
-    def __key__(self):
-        return tuple(self.arguments), self.trigger
+    def __lt__(self, other):
+        with suppress(AttributeError):
+            return (tuple(self.arguments), self.trigger) < (tuple(other.arguments), other.trigger)
+        return NotImplemented
 
 
 @dataclass
@@ -71,16 +69,20 @@ class Relation(AnnData):
     arg1: Entity
     arg2: Entity
 
-    def __key__(self):
-        return self.arg1, self.arg2
+    def __lt__(self, other):
+        with suppress(AttributeError):
+            return (self.arg1, self.arg2) < (other.arg1, other.arg2)
+        return NotImplemented
 
 
 @dataclass
 class Equivalence(AnnData):
     items: t.List[Entity]
 
-    def __key__(self):
-        return tuple(sorted(self.items))
+    def __lt__(self, other):
+        with suppress(AttributeError):
+            return tuple(sorted(self.items)) < tuple(sorted(other.items))
+        return NotImplemented
 
 
 @dataclass
@@ -88,9 +90,9 @@ class Attribute(AnnData):
     tag: str
     items: t.List[AnnData]
 
-    def __key__(self):
+    def __lt__(self, other):
         # TODO
-        return
+        return NotImplemented
 
 
 @dataclass
@@ -99,8 +101,10 @@ class Normalization(AnnData):
     ontology: str
     ont_id: str
 
-    def __key__(self):
-        return self.entity
+    def __lt__(self, other):
+        with suppress(AttributeError):
+            return self.entity < other.entity
+        return NotImplemented
 
 
 # Define file-level representation
@@ -130,10 +134,9 @@ class BratFile:
         return f'<{self.__class__.__name__}: {self.name}, {self._txt_path}>'
 
     def __lt__(self, other):
-        try:
+        with suppress(AttributeError):
             return self.name < other.name
-        except:
-            return NotImplemented
+        return NotImplemented
 
     @property
     def txt_path(self):
@@ -151,7 +154,7 @@ class BratFile:
         # Entities
         ent_mapping = {match[1]: Entity.from_re(match) for match in ent_pattern.finditer(text)}
         self._mapping.update(ent_mapping)
-        data_dict['entities'] = sorted(ent_mapping.values(), key=Entity.__key__)
+        data_dict['entities'] = sorted(ent_mapping.values())
 
         # Relations
         rels = []
@@ -162,17 +165,17 @@ class BratFile:
             arg2 = self._mapping[match[3]]
             new_rel = Relation(tag, arg1, arg2)
             rels.append(new_rel)
-        data_dict['relations'] = sorted(rels, key=Relation.__key__)
+        data_dict['relations'] = sorted(rels)
 
         # Equivalences
         equivs = []
 
         for match in equiv_pattern.finditer(text):
             equiv_entities = [self._mapping[e] for e in re.finditer(r'T\d+', match[1])]
-            equiv_entities.sort(key=Entity.__key__)
+            equiv_entities.sort()
             equivs.append(Equivalence(equiv_entities))
 
-        self._data_dict['equivalences'] = sorted(equivs, key=Equivalence.__key__)
+        data_dict['equivalences'] = sorted(equivs)
 
         # Attributes
         attrs = []
