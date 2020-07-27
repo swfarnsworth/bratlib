@@ -212,6 +212,23 @@ class BratFile:
         # return self._data_dict['normalizations']
         raise NotImplementedError
 
+    def __str__(self):
+        mappings = {}
+        semicolon_join = ';'.join
+
+        output = ""
+
+        for i, ent in enumerate(self.entities, 1):
+            spans = semicolon_join(f'{s[0]} {s[1]}' for s in ent.spans)
+            mappings[ent] = i
+            output += f'T{i}\t{ent.tag} {spans}\t{ent.mention}\n'
+
+        for i, rel in enumerate(self.relations, 1):
+            mappings[rel] = i
+            output += f'R{i}\t{rel.relation} Arg1:T{mappings[rel.arg1]} Arg2:T{mappings[rel.arg2]}\n'
+
+        return output
+
 
 class BratDataset:
 
