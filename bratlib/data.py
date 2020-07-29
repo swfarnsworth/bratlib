@@ -51,6 +51,13 @@ class Entity(AnnData):
             return (self.spans[0], self.spans[-1], self.tag) < (other.spans[0], other.spans[-1], other.tag)
         return NotImplemented
 
+    def __hash__(self):
+        return hash((self.tag, tuple(self.spans), self.mention))
+
+    def __eq__(self, other):
+        with suppress(AttributeError):
+            return (self.tag, self.spans, self.mention) == (other.tag, other.spans, other.mention)
+        return NotImplemented
 
 @dataclass
 class Event(AnnData):
@@ -63,7 +70,7 @@ class Event(AnnData):
         return NotImplemented
 
 
-@dataclass
+@dataclass(eq=True)
 class Relation(AnnData):
     relation: str
     arg1: Entity
@@ -73,6 +80,9 @@ class Relation(AnnData):
         with suppress(AttributeError):
             return (self.arg1, self.arg2) < (other.arg1, other.arg2)
         return NotImplemented
+
+    def __hash__(self):
+        return hash((self.relation, self.arg1, self.arg2))
 
 
 @dataclass
@@ -119,7 +129,7 @@ class BratFile:
     def __init__(self, ann_path: PathLike, txt_path: PathLike):
         self.ann_path = Path(ann_path)
         self._txt_path = Path(txt_path) if isinstance(txt_path, (str, os.PathLike)) else None
-        self.name = self.ann_path.name
+        self.name = self.ann_path.stem
 
         self._mapping = {}
 
@@ -131,7 +141,7 @@ class BratFile:
         return cls(ann_path, txt_path)
 
     def __repr__(self):
-        return f'<{self.__class__.__name__}: {self.name}, {self._txt_path}>'
+        return f'<{self.__class__.__name__}: {self.name}>'
 
     def __lt__(self, other):
         with suppress(AttributeError):
@@ -193,11 +203,11 @@ class BratFile:
 
     @property
     def entities(self) -> t.Iterable[Entity]:
-        return self._data_dict['entities']
+        return self._data_dict['entities'] if not hasattr(self, '_entities') else self._entities
 
     @property
     def relations(self) -> t.Iterable[Relation]:
-        return self._data_dict['relations']
+        return self._data_dict['relations'] if not hasattr(self, '_relations') else self._relations
 
     @property
     def equivalences(self) -> t.Iterable[Equivalence]:
