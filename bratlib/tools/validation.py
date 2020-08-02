@@ -1,25 +1,29 @@
 import argparse
 import os
-from operator import add
+import typing as t
 from functools import reduce
+from operator import add
 
-from bratlib.data import BratDataset, BratFile
+from bratlib.data import BratDataset, BratFile, Entity
 
 
-def validate_ann(ann: BratFile) -> None:
+def validate_entity(ent: Entity, text: str) -> bool:
+    mention_in_text = reduce(add, (text[a:b] for a, b in ent.spans))
+    valid = ent.mention == mention_in_text
+    if not valid:
+        print(ent, mention_in_text)
+    return valid
+
+
+def validate_bratfile(ann: BratFile) -> t.List[bool]:
     with ann.txt_path.open() as f:
         text = f.read()
-
-    for ent in ann.entities:
-        mention_in_text = reduce(add, (text[a:b] for a, b in ent.spans))
-
-        if mention_in_text != ent.mention:
-            print(ent, mention_in_text)
+    return [validate_entity(ent, text) for ent in ann.entities]
 
 
-def validate_dataset(data: BratDataset) -> None:
+def validate_bratdataset(data: BratDataset) -> None:
     for ann in data:
-        validate_ann(ann)
+        validate_bratfile(ann)
 
 
 def main():
@@ -31,10 +35,10 @@ def main():
 
     if os.path.isdir(input_):
         data = BratDataset.from_directory(input_)
-        validate_dataset(data)
+        validate_bratdataset(data)
     elif os.path.isfile(input_):
         ann = BratFile.from_ann_path(input_)
-        validate_ann(ann)
+        validate_bratfile(ann)
     else:
         raise FileNotFoundError('input is not a file or directory')
 
