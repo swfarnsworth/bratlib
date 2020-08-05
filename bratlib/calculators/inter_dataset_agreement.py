@@ -9,7 +9,6 @@ already been paired will not count as false positives.
 """
 
 import argparse
-import logging
 from collections import OrderedDict
 from itertools import product
 from statistics import mean
@@ -18,8 +17,8 @@ from copy import deepcopy
 
 from tabulate import tabulate
 
-from bratlib.data import BratDataset, BratFile, Entity
-from bratlib.iteration import zip_datasets
+from bratlib.data import BratDataset, BratFile
+from bratlib.tools.iteration import zip_datasets
 
 
 @dataclass
