@@ -12,7 +12,6 @@ from bratlib.data.extensions.instance import ContigEntity
 
 con_pattern = re.compile(r"c=\"(.+?)\" (\d+):(\d+) (\d+):(\d+)\|\|t=\"(.+?)\"")
 whitespace_pattern = re.compile(r'\s+')
-not_whitespace = re.compile(r'[\(]?(\S+)[\)]?')
 
 
 @dataclass(eq=True, frozen=True)
@@ -32,20 +31,31 @@ def _create_con_list(con_doc: str) -> t.Iterator[ConEntity]:
 
 def convert_con(con: ConEntity, lines: LineList) -> ContigEntity:
     line: Line = lines[con.start_line]
-    line_tokens: t.List[t.Match] = list(not_whitespace.finditer(line.text))
-    mention_match = line_tokens[con.start_token]
-    start = mention_match.start(1) + line.start
+    first_token = con.mention.split()[0]
+    for m in re.finditer(re.escape(first_token), line.text, re.IGNORECASE):
+        start = m.start()
+        if len(whitespace_pattern.findall(line.text[:start])) != con.start_token - 1:
+            continue
 
     if (con.start_line, con.start_token) == (con.end_line, con.end_token):
-        end = mention_match.end(1) + line.start
-        mention = lines.text[start:end]
-        return ContigEntity(con.tag, [(start, end)], mention)
+        start += line.start
+        end = start + len(con.mention)
+        return ContigEntity(con.tag, [(start, end)], line.text[start:end])
 
     line: Line = lines[con.end_line]
-    line_tokens: t.List[t.Match] = list(not_whitespace.finditer(line.text))
-    mention_match = line_tokens[con.end_token]
-    end = mention_match.end(1) + line.start
-    mention = lines.text[start:end]
+    last_token = con.mention.split()[-1]
+    for m in re.finditer(re.escape(last_token), line.text, re.IGNORECASE):
+        end = m.end()
+        if len(whitespace_pattern.findall(line.text[:end])) != con.end_token - 1:
+            continue
+
+    mention_list = [lines[con.start_line].text[start:], lines[con.end_line].text[:end]]
+    if con.start_line + 1 != con.end_line:
+        mention_list = [mention_list[0]] + lines.lines[con.start_line + 1:con.end_line] + [mention_list[-1]]
+    mention = " ".join(mention_list)
+
+    start += lines[con.start_line].start
+    end += lines[con.end_line].start
 
     return ContigEntity(con.tag, [(start, end)], mention)
 
