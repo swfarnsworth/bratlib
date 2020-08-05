@@ -140,6 +140,14 @@ class BratFile:
         txt_path = possible_txt if possible_txt.exists() else None
         return cls(ann_path, txt_path)
 
+    @classmethod
+    def from_data(cls):
+        new = super().__new__(cls)
+        super().__init__(new)
+        for attr in ['_entities', '_relations', '_equivalences', '_attributes', '_normalizations']:
+            setattr(new, attr, [])
+        return new
+
     def __repr__(self):
         return f'<{self.__class__.__name__}: {self.name}>'
 
@@ -211,15 +219,15 @@ class BratFile:
 
     @property
     def equivalences(self) -> t.Iterable[Equivalence]:
-        return self._data_dict['equivalences']
+        return self._data_dict['equivalences'] if not hasattr(self, '_equivalences') else self._equivalences
 
     @property
     def attributes(self) -> t.Iterable[Attribute]:
-        return self._data_dict['attributes']
+        return self._data_dict['attributes'] if not hasattr(self, '_attributes') else self._attributes
 
     @property
     def normalizations(self) -> t.Iterable[Normalization]:
-        # return self._data_dict['normalizations']
+        # return self._data_dict['normalizations'] if not hasattr(self, '_normalizations') else self._normalizations
         raise NotImplementedError
 
     def __str__(self):
