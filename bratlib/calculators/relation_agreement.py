@@ -4,7 +4,7 @@ from copy import deepcopy
 from itertools import product
 
 from bratlib.calculators import Measures, MeasuresDict, format_results, merge_measures_dict
-from bratlib.calculators.entity_agreement import _ent_equals
+from bratlib.calculators.entity_agreement import ent_equals
 from bratlib.data import BratFile
 from bratlib.data.extensions.file import StatsDataset
 from bratlib.data.extensions.instance import ContigEntity
@@ -36,7 +36,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
 
     for g, s in product(gold_rels, system_rels):
 
-        if not (_ent_equals(g.arg1, s.arg1, mode=mode) and _ent_equals(g.arg2, s.arg2, mode=mode)):
+        if not (ent_equals(g.arg1, s.arg1, mode=mode) and ent_equals(g.arg2, s.arg2, mode=mode)):
             continue
 
         unmatched_gold.remove(g)
@@ -62,7 +62,7 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mo
     :param mode: 'strict' or 'lenient'
     :return: a dictionary of tag-level Measures objects
     """
-    if mode not in ['strict', 'lenient']:
+    if mode not in ('strict', 'lenient'):
         raise ValueError("mode must be 'strict' or 'lenient'")
 
     all_file_measures = [measure_ann_file(gold, system, mode=mode)
@@ -77,7 +77,7 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mo
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Inter-dataset agreement calculator')
+    parser = argparse.ArgumentParser(description='Inter-dataset agreement calculator for relations')
     parser.add_argument('gold_directory', help='First data folder path (gold)')
     parser.add_argument('system_directory', help='Second data folder path (system)')
     parser.add_argument('-m', '--mode', default='strict', help='strict or lenient (defaults to strict)')
@@ -95,7 +95,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# Expected
-# Overall(macro) 0.9222 0.6007 0.7195
-# Overall(micro) 0.9338 0.6072 0.7359

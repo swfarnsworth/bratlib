@@ -20,10 +20,10 @@ from bratlib.data.extensions.instance import ContigEntity
 from bratlib.tools.iteration import zip_datasets
 
 
-def _ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
+def ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
     if mode == 'lenient':
         return a.tag == b.tag and ((a.end > b.start and a.start < b.end) or (a.start < b.end and b.start < a.end))
-    return (a.tag, a.spans) == (b.tag, b.spans)
+    return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> MeasuresDict:
@@ -48,7 +48,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
     measures = defaultdict(Measures)
 
     for s, g in product(system_ents, gold_ents):
-        if _ent_equals(s, g, mode=mode):
+        if ent_equals(s, g, mode=mode):
             if s not in unmatched_system:
                 # Don't do anything with system predictions that have already been paired
                 continue
@@ -102,7 +102,7 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mo
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Inter-dataset agreement calculator')
+    parser = argparse.ArgumentParser(description='Inter-dataset agreement calculator for entities')
     parser.add_argument('gold_directory', help='First data folder path (gold)')
     parser.add_argument('system_directory', help='Second data folder path (system)')
     parser.add_argument('-m', '--mode', default='strict', help='strict or lenient (defaults to strict)')
