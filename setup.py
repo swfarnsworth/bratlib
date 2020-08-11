@@ -9,5 +9,6 @@ setup(
     author='Steele Farnsworth',
     install_requires=[
         'cached-property',
+        'tabulate'
     ]
 )
