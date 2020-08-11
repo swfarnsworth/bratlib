@@ -32,30 +32,32 @@ def _create_con_list(con_doc: str) -> t.Iterator[ConEntity]:
 def convert_con(con: ConEntity, lines: LineList) -> ContigEntity:
     line: Line = lines[con.start_line]
     first_token = con.mention.split()[0]
+    first_match = None
     for m in re.finditer(re.escape(first_token), line.text, re.IGNORECASE):
         start = m.start()
         if len(whitespace_pattern.findall(line.text[:start])) == con.start_token:
+            first_match = m
             break
+
+    assert first_match is not None
 
     if (con.start_line, con.start_token) == (con.end_line, con.end_token):
         start += line.start
-        end = start + len(con.mention)
-        return ContigEntity(con.tag, [(start, end)], line.text[start:end])
+        end = line.start + first_match.end()
+        mention = lines.text[start:end].replace('\n', ' ')
+        return ContigEntity(con.tag, [(start, end)], mention)
 
     line: Line = lines[con.end_line]
     last_token = con.mention.split()[-1]
     for m in re.finditer(re.escape(last_token), line.text, re.IGNORECASE):
         end = m.end()
-        if len(whitespace_pattern.findall(line.text[:end])) == con.end_token:
+        if len(whitespace_pattern.findall(line.text[:m.start()])) == con.end_token:
             break
-
-    mention_list = [lines[con.start_line].text[start:], lines[con.end_line].text[:end]]
-    if con.start_line + 1 != con.end_line:
-        mention_list = [mention_list[0]] + lines.lines[con.start_line + 1:con.end_line] + [mention_list[-1]]
-    mention = " ".join(mention_list)
 
     start += lines[con.start_line].start
     end += lines[con.end_line].start
+
+    mention = lines.text[start:end].replace('\n', ' ')
 
     return ContigEntity(con.tag, [(start, end)], mention)
 

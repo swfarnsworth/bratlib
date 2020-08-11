@@ -22,7 +22,7 @@ class LineList:
         all_lines = []
         for line in text.split('\n'):
             all_lines.append(Line(index, line))
-            index += len(line)
+            index += len(line) + 1
 
         return cls(all_lines, text)
 
