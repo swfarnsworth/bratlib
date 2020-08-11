@@ -34,8 +34,8 @@ def convert_con(con: ConEntity, lines: LineList) -> ContigEntity:
     first_token = con.mention.split()[0]
     for m in re.finditer(re.escape(first_token), line.text, re.IGNORECASE):
         start = m.start()
-        if len(whitespace_pattern.findall(line.text[:start])) != con.start_token - 1:
-            continue
+        if len(whitespace_pattern.findall(line.text[:start])) == con.start_token:
+            break
 
     if (con.start_line, con.start_token) == (con.end_line, con.end_token):
         start += line.start
@@ -46,8 +46,8 @@ def convert_con(con: ConEntity, lines: LineList) -> ContigEntity:
     last_token = con.mention.split()[-1]
     for m in re.finditer(re.escape(last_token), line.text, re.IGNORECASE):
         end = m.end()
-        if len(whitespace_pattern.findall(line.text[:end])) != con.end_token - 1:
-            continue
+        if len(whitespace_pattern.findall(line.text[:end])) == con.end_token:
+            break
 
     mention_list = [lines[con.start_line].text[start:], lines[con.end_line].text[:end]]
     if con.start_line + 1 != con.end_line:
