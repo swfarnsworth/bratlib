@@ -1,10 +1,10 @@
+import argparse
 import re
 import typing as t
 from collections import namedtuple
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-import argparse
 
 from bratlib.converters import Line, LineList
 from bratlib.data import Relation, BratFile
