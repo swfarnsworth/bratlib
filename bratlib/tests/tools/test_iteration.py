@@ -1,6 +1,6 @@
 import unittest
-from types import SimpleNamespace
 from random import shuffle
+from types import SimpleNamespace
 
 from bratlib.tools.iteration import zip_datasets
 
