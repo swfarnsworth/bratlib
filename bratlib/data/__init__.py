@@ -59,6 +59,7 @@ class Entity(AnnData):
             return (self.tag, self.spans, self.mention) == (other.tag, other.spans, other.mention)
         return NotImplemented
 
+
 @dataclass
 class Event(AnnData):
     trigger: Entity
@@ -203,9 +204,11 @@ class BratFile:
             data = [self._mapping[e] for e in re.finditer(r'[ET]\d+', match[2])]
             attrs.append(Attribute(tag, data))
 
-        data_dict['attributes'] = attrs
+        data_dict['attributes'] = sorted(attrs)
 
-        # TODO norms
+        # Normalizations
+        data_dict['normalizations'] = sorted(Normalization(ent_mapping[m[1]], m[2], m[3])
+                                             for m in norm_pattern.finditer(text))
 
         return data_dict
 
@@ -227,8 +230,7 @@ class BratFile:
 
     @property
     def normalizations(self) -> t.Iterable[Normalization]:
-        # return self._data_dict['normalizations'] if not hasattr(self, '_normalizations') else self._normalizations
-        raise NotImplementedError
+        return self._data_dict['normalizations'] if not hasattr(self, '_normalizations') else self._normalizations
 
     def __str__(self):
         mappings = {}
