@@ -175,6 +175,8 @@ class BratFile:
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
+        # TODO Events
+
         # Relations
         rels = []
 
@@ -216,6 +218,10 @@ class BratFile:
     def entities(self) -> t.Iterable[Entity]:
         return self._data_dict['entities'] if not hasattr(self, '_entities') else self._entities
 
+    def events(self) -> t.Iterable[Event]:
+        raise NotImplementedError
+        # return self._data_dict['events'] if not hasattr(self, '_events') else self._events
+
     @property
     def relations(self) -> t.Iterable[Relation]:
         return self._data_dict['relations'] if not hasattr(self, '_relations') else self._relations
@@ -243,9 +249,15 @@ class BratFile:
             mappings[ent] = i
             output += f'T{i}\t{ent.tag} {spans}\t{ent.mention}\n'
 
+        # TODO events
+
         for i, rel in enumerate(self.relations, 1):
             mappings[rel] = i
             output += f'R{i}\t{rel.relation} Arg1:T{mappings[rel.arg1]} Arg2:T{mappings[rel.arg2]}\n'
+
+        # TODO equivalences
+        # TODO attributes
+        # TODO normalizations
 
         return output
 
