@@ -23,6 +23,8 @@ class TestData(unittest.TestCase):
         with open(cls.brat_file, 'w') as f:
             f.write(sample_doc)
 
+        cls.maxDiff = None
+
     @classmethod
     def tearDownClass(cls):
         rmtree(cls.brat_dir)
@@ -34,7 +36,9 @@ class TestData(unittest.TestCase):
             Entity('B', [(3, 5), (5, 6)], 'ipsum'),
         ]
 
-        event_expected = []
+        event_expected = [
+            Event(ents_expected[0], ents_expected[0:2])
+        ]
 
         rel_expected = [
             Relation('C', ents_expected[0], ents_expected[1])
@@ -45,7 +49,7 @@ class TestData(unittest.TestCase):
         ]
 
         attribute_expected = [
-            Attribute('F', event_expected[0])
+            Attribute('F', [event_expected[0]])
         ]
 
         norm_expected = [
@@ -54,10 +58,22 @@ class TestData(unittest.TestCase):
 
         ann = BratFile.from_ann_path(self.brat_file)
 
+        # Test entities
         self.assertListEqual(ann.entities, ents_expected)
         self.assertListEqual([ent.mention for ent in ann.entities], [ent.mention for ent in ents_expected])
+
+        # Events
+        self.assertListEqual(ann.events, event_expected)
+
+        # Relations
         self.assertListEqual(ann.relations, rel_expected)
         self.assertIs(ann.relations[0].arg1, ann.entities[0])
+
+        # Equivalences
         self.assertListEqual(ann.equivalences, equiv_expected)
+
+        # Attributes
         self.assertListEqual(ann.attributes, attribute_expected)
+
+        # Normalizations
         self.assertListEqual(ann.normalizations, norm_expected)
