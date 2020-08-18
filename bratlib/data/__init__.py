@@ -14,11 +14,11 @@ PathLike = t.Union[str, os.PathLike]
 
 # Define regexes
 ent_pattern = re.compile(r'(T\d+)\t([^\t]+) ((?:\d+ \d+;)*\d+ \d+)\t(.+)')
-event_pattern = re.compile(r'(E\d+)\t[^\t:]+:T(\d+) ((?:[^\s:]+:T(?:\d+)[\s]*)+)')
+event_pattern = re.compile(r'(?P<id>E\d+)\t(?P<trigger>[^\t:]+):(?P<trigger_ent>T\d+) (?P<items>(?:Org\d:[TRAN]\d+[\s]*)+)')
 rel_pattern = re.compile(r'R\d+\t(\S+) Arg1:(T\d+) Arg2:(T\d+)')
 equiv_pattern = re.compile(r'\*\tEquiv ((?:T\d+[\s])+)')
 attrib_pattern = re.compile(r'A\d+\t(\S+) ((?:[TE]\d+[\s])+)')
-norm_pattern = re.compile(r'N\d+\tReference T(\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
+norm_pattern = re.compile(r'N\d+\tReference (T\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
 
 
 # Define annotation types
@@ -67,7 +67,7 @@ class Event(AnnData):
 
     def __lt__(self, other):
         with suppress(AttributeError):
-            return (tuple(self.arguments), self.trigger) < (tuple(other.arguments), other.trigger)
+            return self.trigger < other.trigger
         return NotImplemented
 
 
@@ -176,6 +176,15 @@ class BratFile:
         data_dict['entities'] = sorted(ent_mapping.values())
 
         # TODO Events
+        events = []
+        for m in event_pattern.finditer(text):
+            trigger = self._mapping[m['trigger_ent']]
+            items = [self._mapping[n[1]] for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
+            new_event = Event(trigger, items)
+            self._mapping[m['id']] = new_event
+            events.append(new_event)
+
+        data_dict['events'] = sorted(events)
 
         # Relations
         rels = []
@@ -192,7 +201,7 @@ class BratFile:
         equivs = []
 
         for match in equiv_pattern.finditer(text):
-            equiv_entities = [self._mapping[e] for e in re.finditer(r'T\d+', match[1])]
+            equiv_entities = [self._mapping[e[0]] for e in re.finditer(r'T\d+', match[1])]
             equiv_entities.sort()
             equivs.append(Equivalence(equiv_entities))
 
@@ -203,7 +212,7 @@ class BratFile:
 
         for match in attrib_pattern.finditer(text):
             tag = match[1]
-            data = [self._mapping[e] for e in re.finditer(r'[ET]\d+', match[2])]
+            data = [self._mapping[e[0]] for e in re.finditer(r'[ET]\d+', match[2])]
             attrs.append(Attribute(tag, data))
 
         data_dict['attributes'] = sorted(attrs)
@@ -218,9 +227,9 @@ class BratFile:
     def entities(self) -> t.Iterable[Entity]:
         return self._data_dict['entities'] if not hasattr(self, '_entities') else self._entities
 
+    @property
     def events(self) -> t.Iterable[Event]:
-        raise NotImplementedError
-        # return self._data_dict['events'] if not hasattr(self, '_events') else self._events
+        return self._data_dict['events'] if not hasattr(self, '_events') else self._events
 
     @property
     def relations(self) -> t.Iterable[Relation]:
