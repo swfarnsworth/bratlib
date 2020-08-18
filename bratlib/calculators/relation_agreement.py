@@ -39,7 +39,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
         if not (ent_equals(g.arg1, s.arg1, mode=mode) and ent_equals(g.arg2, s.arg2, mode=mode)):
             continue
 
-        gold_are_matched[r] = sys_are_matched[r] = True
+        gold_are_matched[g] = sys_are_matched[s] = True
 
         if g.relation == s.relation:
             measures[g.relation].tp += 1
