@@ -73,6 +73,9 @@ class Event(AnnData):
     def __lt__(self, other):
         return self.trigger < other.trigger
 
+    def __hash__(self):
+        return hash((self.trigger, tuple(self.arguments)))
+
 
 @dataclass(eq=True)
 class Relation(AnnData):
