@@ -6,7 +6,7 @@ from bratlib.data import *
 
 sample_doc = """T1\tA 1 2\tlorem
 T2\tB 3 5;5 6\tipsum
-E1\tD:T1 Org1:T1 Org2:T2
+E1\tA:T1 Org1:T1 Org2:T2
 R1\tC Arg1:T1 Arg2:T2
 *\tEquiv T1 T2
 A1\tF E1
@@ -77,3 +77,6 @@ class TestData(unittest.TestCase):
 
         # Normalizations
         self.assertListEqual(ann.normalizations, norm_expected)
+
+        # Test __str__
+        self.assertEqual(sample_doc, str(ann))
