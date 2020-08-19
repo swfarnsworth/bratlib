@@ -3,14 +3,12 @@ from __future__ import annotations
 import os
 import re
 import typing as t
-from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from cached_property import cached_property
 
 from bratlib.utils import except_return
-
 
 # Define types
 PathLike = t.Union[str, os.PathLike]
@@ -155,10 +153,9 @@ class BratFile:
     def __repr__(self):
         return f'<{self.__class__.__name__}: {self.name}>'
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return self.name < other.name
-        return NotImplemented
+        return self.name < other.name
 
     @property
     def txt_path(self):
@@ -178,7 +175,6 @@ class BratFile:
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
-        # TODO Events
         events = []
         for m in event_pattern.finditer(text):
             trigger = self._mapping[m['trigger_ent']]
