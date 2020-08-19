@@ -9,6 +9,9 @@ from pathlib import Path
 
 from cached_property import cached_property
 
+from bratlib.utils import except_return
+
+
 # Define types
 PathLike = t.Union[str, os.PathLike]
 
@@ -20,8 +23,11 @@ equiv_pattern = re.compile(r'\*\tEquiv ((?:T\d+[\s])+)')
 attrib_pattern = re.compile(r'A\d+\t(\S+) ((?:[TE]\d+[\s])+)')
 norm_pattern = re.compile(r'N\d+\tReference (T\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
 
+# Decorator to streamline comparison operator implementations
+_notimp = except_return(NotImplemented, AttributeError)
 
 # Define annotation types
+
 
 class AnnData:
     pass
@@ -46,18 +52,16 @@ class Entity(AnnData):
 
         return cls(tag, spans, mention)
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return (self.spans[0], self.spans[-1], self.tag) < (other.spans[0], other.spans[-1], other.tag)
-        return NotImplemented
+        return (self.spans[0], self.spans[-1], self.tag) < (other.spans[0], other.spans[-1], other.tag)
 
     def __hash__(self):
         return hash((self.tag, tuple(self.spans), self.mention))
 
+    @_notimp
     def __eq__(self, other):
-        with suppress(AttributeError):
-            return (self.tag, self.spans, self.mention) == (other.tag, other.spans, other.mention)
-        return NotImplemented
+        return (self.tag, self.spans, self.mention) == (other.tag, other.spans, other.mention)
 
 
 @dataclass
@@ -65,10 +69,9 @@ class Event(AnnData):
     trigger: Entity
     arguments: t.List[Entity]
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return self.trigger < other.trigger
-        return NotImplemented
+        return self.trigger < other.trigger
 
 
 @dataclass(eq=True)
@@ -77,10 +80,9 @@ class Relation(AnnData):
     arg1: Entity
     arg2: Entity
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return (self.arg1, self.arg2) < (other.arg1, other.arg2)
-        return NotImplemented
+        return (self.arg1, self.arg2) < (other.arg1, other.arg2)
 
     def __hash__(self):
         return hash((self.relation, self.arg1, self.arg2))
@@ -90,10 +92,9 @@ class Relation(AnnData):
 class Equivalence(AnnData):
     items: t.List[Entity]
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return tuple(sorted(self.items)) < tuple(sorted(other.items))
-        return NotImplemented
+        return tuple(sorted(self.items)) < tuple(sorted(other.items))
 
 
 @dataclass
@@ -101,9 +102,9 @@ class Attribute(AnnData):
     tag: str
     items: t.List[AnnData]
 
+    @_notimp
     def __lt__(self, other):
-        # TODO
-        return NotImplemented
+        return self.tag < other.tag
 
 
 @dataclass
@@ -112,10 +113,9 @@ class Normalization(AnnData):
     ontology: str
     ont_id: str
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return self.entity < other.entity
-        return NotImplemented
+        return self.entity < other.entity
 
 
 # Define file-level representation
