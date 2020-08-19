@@ -250,23 +250,32 @@ class BratFile:
     def __str__(self):
         mappings = {}
         semicolon_join = ';'.join
+        space_join = ' '.join
 
         output = ""
 
         for i, ent in enumerate(self.entities, 1):
             spans = semicolon_join(f'{s[0]} {s[1]}' for s in ent.spans)
-            mappings[ent] = i
+            mappings[ent] = f'T{i}'
             output += f'T{i}\t{ent.tag} {spans}\t{ent.mention}\n'
 
-        # TODO events
+        for i, event in enumerate(self.events, 1):
+            mappings[event] = f'E{i}'
+            output += f'E{i}\t{event.trigger.tag}:{mappings[event.trigger]} ' + \
+                      space_join(f'Org{j}:{mappings[a]}' for j, a in enumerate(event.arguments, 1)) + '\n'
 
         for i, rel in enumerate(self.relations, 1):
             mappings[rel] = i
-            output += f'R{i}\t{rel.relation} Arg1:T{mappings[rel.arg1]} Arg2:T{mappings[rel.arg2]}\n'
+            output += f'R{i}\t{rel.relation} Arg1:{mappings[rel.arg1]} Arg2:{mappings[rel.arg2]}\n'
 
-        # TODO equivalences
-        # TODO attributes
-        # TODO normalizations
+        for equiv in self.equivalences:
+            output += f'*\tEquiv ' + space_join(mappings[x] for x in equiv.items) + '\n'
+
+        for i, attr in enumerate(self.attributes, 1):
+            output += f'A{i}\t{attr.tag} ' + space_join(mappings[x] for x in attr.items) + '\n'
+
+        for i, norm in enumerate(self.normalizations, 1):
+            output += f'N{i}\tReference {mappings[norm.entity]} {norm.ontology}:{norm.ont_id}\t{norm.entity.mention}\n'
 
         return output
 
