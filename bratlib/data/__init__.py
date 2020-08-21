@@ -146,7 +146,7 @@ class BratFile:
     def from_data(cls):
         new = super().__new__(cls)
         super().__init__(new)
-        for attr in ['_entities', '_relations', '_equivalences', '_attributes', '_normalizations']:
+        for attr in ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']:
             setattr(new, attr, [])
         return new
 
