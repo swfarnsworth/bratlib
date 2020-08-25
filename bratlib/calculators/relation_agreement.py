@@ -39,16 +39,20 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
         if not (ent_equals(g.arg1, s.arg1, mode=mode) and ent_equals(g.arg2, s.arg2, mode=mode)):
             continue
 
-        already_matched = gold_are_matched[g] or sys_are_matched[s]
-        gold_are_matched[g] = sys_are_matched[s] = True
+        if g.relation != s.relation:
+            continue
 
-        if g.relation == s.relation and not already_matched:
+        if not gold_are_matched[g]:
             measures[g.relation].tp += 1
 
+        gold_are_matched[g] = sys_are_matched[s] = True
+
     for r, b in gold_are_matched.items():
+        # Every gold relationship that doesn't have a match means there's a missing match--a false negative
         measures[r.relation].fn += 1 if not b else 0
 
     for r, b in sys_are_matched.items():
+        # Every system relationship that doesn't have a match was incorrect--a false positive
         measures[r.relation].fp += 1 if not b else 0
 
     return measures
@@ -68,11 +72,13 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mo
     all_file_measures = [measure_ann_file(gold, system, mode=mode)
                          for gold, system in zip_datasets(gold_dataset, system_dataset)]
 
+    print(len(all_file_measures))
     # Combine the Measures objects for each tag from each file together
     tag_measures = defaultdict(Measures)
     for file_measures in all_file_measures:
         tag_measures = merge_measures_dict(tag_measures, file_measures)
 
+    print(tag_measures)
     return tag_measures
 
 
