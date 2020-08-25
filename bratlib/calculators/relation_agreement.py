@@ -72,13 +72,11 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mo
     all_file_measures = [measure_ann_file(gold, system, mode=mode)
                          for gold, system in zip_datasets(gold_dataset, system_dataset)]
 
-    print(len(all_file_measures))
     # Combine the Measures objects for each tag from each file together
     tag_measures = defaultdict(Measures)
     for file_measures in all_file_measures:
         tag_measures = merge_measures_dict(tag_measures, file_measures)
 
-    print(tag_measures)
     return tag_measures
 
 
