@@ -3,25 +3,29 @@ from __future__ import annotations
 import os
 import re
 import typing as t
-from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from cached_property import cached_property
+
+from bratlib.utils import except_return
 
 # Define types
 PathLike = t.Union[str, os.PathLike]
 
 # Define regexes
 ent_pattern = re.compile(r'(T\d+)\t([^\t]+) ((?:\d+ \d+;)*\d+ \d+)\t(.+)')
-event_pattern = re.compile(r'(E\d+)\t[^\t:]+:T(\d+) ((?:[^\s:]+:T(?:\d+)[\s]*)+)')
+event_pattern = re.compile(r'(?P<id>E\d+)\t(?P<trigger>[^\t:]+):(?P<trigger_ent>T\d+) (?P<items>(?:Org\d:[TRAN]\d+[\s]*)+)')
 rel_pattern = re.compile(r'R\d+\t(\S+) Arg1:(T\d+) Arg2:(T\d+)')
 equiv_pattern = re.compile(r'\*\tEquiv ((?:T\d+[\s])+)')
 attrib_pattern = re.compile(r'A\d+\t(\S+) ((?:[TE]\d+[\s])+)')
-norm_pattern = re.compile(r'N\d+\tReference T(\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
+norm_pattern = re.compile(r'N\d+\tReference (T\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
 
+# Decorator to streamline comparison operator implementations
+_notimp = except_return(NotImplemented, AttributeError)
 
 # Define annotation types
+
 
 class AnnData:
     pass
@@ -46,28 +50,29 @@ class Entity(AnnData):
 
         return cls(tag, spans, mention)
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return (self.spans[0], self.spans[-1], self.tag) < (other.spans[0], other.spans[-1], other.tag)
-        return NotImplemented
+        return (self.spans[0], self.spans[-1], self.tag) < (other.spans[0], other.spans[-1], other.tag)
 
     def __hash__(self):
         return hash((self.tag, tuple(self.spans), self.mention))
 
+    @_notimp
     def __eq__(self, other):
-        with suppress(AttributeError):
-            return (self.tag, self.spans, self.mention) == (other.tag, other.spans, other.mention)
-        return NotImplemented
+        return (self.tag, self.spans, self.mention) == (other.tag, other.spans, other.mention)
+
 
 @dataclass
 class Event(AnnData):
     trigger: Entity
     arguments: t.List[Entity]
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return (tuple(self.arguments), self.trigger) < (tuple(other.arguments), other.trigger)
-        return NotImplemented
+        return self.trigger < other.trigger
+
+    def __hash__(self):
+        return hash((self.trigger, tuple(self.arguments)))
 
 
 @dataclass(eq=True)
@@ -76,10 +81,9 @@ class Relation(AnnData):
     arg1: Entity
     arg2: Entity
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return (self.arg1, self.arg2) < (other.arg1, other.arg2)
-        return NotImplemented
+        return (self.arg1, self.arg2) < (other.arg1, other.arg2)
 
     def __hash__(self):
         return hash((self.relation, self.arg1, self.arg2))
@@ -89,10 +93,9 @@ class Relation(AnnData):
 class Equivalence(AnnData):
     items: t.List[Entity]
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return tuple(sorted(self.items)) < tuple(sorted(other.items))
-        return NotImplemented
+        return tuple(sorted(self.items)) < tuple(sorted(other.items))
 
 
 @dataclass
@@ -100,9 +103,9 @@ class Attribute(AnnData):
     tag: str
     items: t.List[AnnData]
 
+    @_notimp
     def __lt__(self, other):
-        # TODO
-        return NotImplemented
+        return self.tag < other.tag
 
 
 @dataclass
@@ -111,10 +114,9 @@ class Normalization(AnnData):
     ontology: str
     ont_id: str
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return self.entity < other.entity
-        return NotImplemented
+        return self.entity < other.entity
 
 
 # Define file-level representation
@@ -144,17 +146,16 @@ class BratFile:
     def from_data(cls):
         new = super().__new__(cls)
         super().__init__(new)
-        for attr in ['_entities', '_relations', '_equivalences', '_attributes', '_normalizations']:
+        for attr in ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']:
             setattr(new, attr, [])
         return new
 
     def __repr__(self):
         return f'<{self.__class__.__name__}: {self.name}>'
 
+    @_notimp
     def __lt__(self, other):
-        with suppress(AttributeError):
-            return self.name < other.name
-        return NotImplemented
+        return self.name < other.name
 
     @property
     def txt_path(self):
@@ -174,6 +175,16 @@ class BratFile:
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
+        events = []
+        for m in event_pattern.finditer(text):
+            trigger = self._mapping[m['trigger_ent']]
+            items = [self._mapping[n[1]] for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
+            new_event = Event(trigger, items)
+            self._mapping[m['id']] = new_event
+            events.append(new_event)
+
+        data_dict['events'] = sorted(events)
+
         # Relations
         rels = []
 
@@ -189,7 +200,7 @@ class BratFile:
         equivs = []
 
         for match in equiv_pattern.finditer(text):
-            equiv_entities = [self._mapping[e] for e in re.finditer(r'T\d+', match[1])]
+            equiv_entities = [self._mapping[e[0]] for e in re.finditer(r'T\d+', match[1])]
             equiv_entities.sort()
             equivs.append(Equivalence(equiv_entities))
 
@@ -200,18 +211,24 @@ class BratFile:
 
         for match in attrib_pattern.finditer(text):
             tag = match[1]
-            data = [self._mapping[e] for e in re.finditer(r'[ET]\d+', match[2])]
+            data = [self._mapping[e[0]] for e in re.finditer(r'[ET]\d+', match[2])]
             attrs.append(Attribute(tag, data))
 
-        data_dict['attributes'] = attrs
+        data_dict['attributes'] = sorted(attrs)
 
-        # TODO norms
+        # Normalizations
+        data_dict['normalizations'] = sorted(Normalization(ent_mapping[m[1]], m[2], m[3])
+                                             for m in norm_pattern.finditer(text))
 
         return data_dict
 
     @property
     def entities(self) -> t.Iterable[Entity]:
         return self._data_dict['entities'] if not hasattr(self, '_entities') else self._entities
+
+    @property
+    def events(self) -> t.Iterable[Event]:
+        return self._data_dict['events'] if not hasattr(self, '_events') else self._events
 
     @property
     def relations(self) -> t.Iterable[Relation]:
@@ -227,23 +244,37 @@ class BratFile:
 
     @property
     def normalizations(self) -> t.Iterable[Normalization]:
-        # return self._data_dict['normalizations'] if not hasattr(self, '_normalizations') else self._normalizations
-        raise NotImplementedError
+        return self._data_dict['normalizations'] if not hasattr(self, '_normalizations') else self._normalizations
 
     def __str__(self):
         mappings = {}
         semicolon_join = ';'.join
+        space_join = ' '.join
 
         output = ""
 
         for i, ent in enumerate(self.entities, 1):
             spans = semicolon_join(f'{s[0]} {s[1]}' for s in ent.spans)
-            mappings[ent] = i
+            mappings[ent] = f'T{i}'
             output += f'T{i}\t{ent.tag} {spans}\t{ent.mention}\n'
+
+        for i, event in enumerate(self.events, 1):
+            mappings[event] = f'E{i}'
+            output += f'E{i}\t{event.trigger.tag}:{mappings[event.trigger]} ' + \
+                      space_join(f'Org{j}:{mappings[a]}' for j, a in enumerate(event.arguments, 1)) + '\n'
 
         for i, rel in enumerate(self.relations, 1):
             mappings[rel] = i
-            output += f'R{i}\t{rel.relation} Arg1:T{mappings[rel.arg1]} Arg2:T{mappings[rel.arg2]}\n'
+            output += f'R{i}\t{rel.relation} Arg1:{mappings[rel.arg1]} Arg2:{mappings[rel.arg2]}\n'
+
+        for equiv in self.equivalences:
+            output += f'*\tEquiv ' + space_join(mappings[x] for x in equiv.items) + '\n'
+
+        for i, attr in enumerate(self.attributes, 1):
+            output += f'A{i}\t{attr.tag} ' + space_join(mappings[x] for x in attr.items) + '\n'
+
+        for i, norm in enumerate(self.normalizations, 1):
+            output += f'N{i}\tReference {mappings[norm.entity]} {norm.ontology}:{norm.ont_id}\t{norm.entity.mention}\n'
 
         return output
 
