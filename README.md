@@ -7,4 +7,10 @@ between NLP libraries as part of a larger end-to-end solution.
 
 Bratlib also contains tools for analyzing document annotations, including calculators for binary classification scores.
 These are available as importable functions or as command line tools.
- 
+
+## Usage
+
+The primary data facilitation classes are defined in `bratlib.data`
+
+* `BratDataset` represents a directory containing ann and txt files. The constructor `BratDataset.from_directory(dir_path)` with automatically read the directory and pair any matching ann and txt files into `BratFile` instances. `BratDataset` instances are iterables of `BratFile`s instances.
+* `BratFile` represents an individual ann file and its respective txt file, if it exists. The constructor `BratFile.from_ann_path(ann_path)` will handle finding the txt file. `BratFile` instances search the ann file they represent for all their entries that are formatted correctly.
