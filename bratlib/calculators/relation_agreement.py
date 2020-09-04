@@ -31,25 +31,29 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
 
     measures = defaultdict(Measures)
 
-    unmatched_gold = set(gold_rels)
-    unmatched_sys = set(system_rels)
+    gold_are_matched = {r: False for r in gold_rels}
+    sys_are_matched = {r: False for r in system_rels}
 
     for g, s in product(gold_rels, system_rels):
 
         if not (ent_equals(g.arg1, s.arg1, mode=mode) and ent_equals(g.arg2, s.arg2, mode=mode)):
             continue
 
-        unmatched_gold.remove(g)
-        unmatched_sys.remove(s)
+        if g.relation != s.relation:
+            continue
 
-        if g.relation == s.relation:
+        if not gold_are_matched[g]:
             measures[g.relation].tp += 1
 
-    for r in unmatched_gold:
-        measures[r.relation].fn += 1
+        gold_are_matched[g] = sys_are_matched[s] = True
 
-    for r in unmatched_sys:
-        measures[r.relation].fp += 1
+    for r, b in gold_are_matched.items():
+        # Every gold relationship that doesn't have a match means there's a missing match--a false negative
+        measures[r.relation].fn += 1 if not b else 0
+
+    for r, b in sys_are_matched.items():
+        # Every system relationship that doesn't have a match was incorrect--a false positive
+        measures[r.relation].fp += 1 if not b else 0
 
     return measures
 
