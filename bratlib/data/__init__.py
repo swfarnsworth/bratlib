@@ -127,6 +127,21 @@ class NoTxtError(FileNotFoundError):
 
 
 class BratFile:
+    """
+    BratFiles contain the following attributes for representing data found in their files:
+    entities, events, relations, equivalences, attributes, normalizations.
+    Accessing any one of these attributes for the first time will trigger opening the file for the first time,
+    and all the data read from the file is cached.
+
+    Every data item is represented once, so any subsequent references to the same data item are the same object.
+    For example, any Relation accessible via `brat_file.relations` refers to two Entities; these are the same
+    two Entity objects one would find in `brat_file.entities`.
+
+    Giving a BratFile instance attributes of the same name as these with a leading underscore (so `_entities` instead
+    of `entities`) will cause subsequent accesses of the non-underscore name to return that value.
+
+    Accessing the `txt_path` attribute will raise NoTxtError if the instance does not have a txt file.
+    """
 
     def __init__(self, ann_path: PathLike, txt_path: PathLike):
         self.ann_path = Path(ann_path)
@@ -137,6 +152,7 @@ class BratFile:
 
     @classmethod
     def from_ann_path(cls, ann_path: PathLike):
+        """Automatically pairs the ann file with a txt file if one by the same name exists in the directory"""
         ann_path = Path(ann_path)
         possible_txt = Path(str(ann_path).rstrip('ann') + 'txt')
         txt_path = possible_txt if possible_txt.exists() else None
@@ -144,6 +160,10 @@ class BratFile:
 
     @classmethod
     def from_data(cls):
+        """
+        Creates an instance that does not represent an existing file. All data attributes are blank lists that
+        can be mutated.
+        """
         new = super().__new__(cls)
         super().__init__(new)
         for attr in ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']:
@@ -160,7 +180,7 @@ class BratFile:
     @property
     def txt_path(self):
         if self._txt_path is None:
-            raise NoTxtError('This BratFile does not have an associated txt file')
+            raise NoTxtError('This BratFile does not have an associated txt file.')
         return self._txt_path
 
     @cached_property
@@ -247,6 +267,10 @@ class BratFile:
         return self._data_dict['normalizations'] if not hasattr(self, '_normalizations') else self._normalizations
 
     def __str__(self):
+        """
+        This method creates a representation that can be written to file,
+        and is thus not a light-weight method call; use __repr__ for a lightweight representation
+        """
         mappings = {}
         semicolon_join = ';'.join
         space_join = ' '.join
@@ -287,6 +311,9 @@ class BratDataset:
 
     @classmethod
     def from_directory(cls, dir_path: PathLike) -> BratDataset:
+        """
+        Automatically creates BratFiles for all the ann files in a given directory when creating the BratDataset.
+        """
         directory = Path(dir_path)
         brat_files = [BratFile.from_ann_path(p) for p in directory.iterdir() if p.suffix == '.ann']
         brat_files.sort()
