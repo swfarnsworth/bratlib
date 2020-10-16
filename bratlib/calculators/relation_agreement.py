@@ -11,17 +11,13 @@ from bratlib.data.extensions.instance import ContigEntity
 from bratlib.tools.iteration import zip_datasets
 
 
-def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> MeasuresDict:
+def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> MeasuresDict:
     """
     Calculates tag level measurements for two parallel ann files; it does not score them
     :param ann_1: path to the gold ann file
     :param ann_2: path to the system ann file
-    :param mode: strict or lenient
     :return: a dictionary mapping tags (str) to measurements (Measures)
     """
-    if mode not in ('strict', 'lenient'):
-        raise ValueError("mode must be 'strict' or 'lenient'")
-
     gold_rels = list(deepcopy(ann_1.relations))
     system_rels = list(deepcopy(ann_2.relations))
 
@@ -36,7 +32,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
 
     for g, s in product(gold_rels, system_rels):
 
-        if not (ent_equals(g.arg1, s.arg1, mode=mode) and ent_equals(g.arg2, s.arg2, mode=mode)):
+        if not (ent_equals(g.arg1, s.arg1, mode='strict') and ent_equals(g.arg2, s.arg2, mode='strict')):
             continue
 
         if g.relation != s.relation:
@@ -58,18 +54,15 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
     return measures
 
 
-def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mode='strict') -> MeasuresDict:
+def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset) -> MeasuresDict:
     """
     Measures the true positive, false positive, and false negative counts for a directory of predictions
     :param gold_dataset: The gold version of the predicted dataset
     :param system_dataset: The predicted dataset
-    :param mode: 'strict' or 'lenient'
     :return: a dictionary of tag-level Measures objects
     """
-    if mode not in ('strict', 'lenient'):
-        raise ValueError("mode must be 'strict' or 'lenient'")
 
-    all_file_measures = [measure_ann_file(gold, system, mode=mode)
+    all_file_measures = [measure_ann_file(gold, system)
                          for gold, system in zip_datasets(gold_dataset, system_dataset)]
 
     # Combine the Measures objects for each tag from each file together
@@ -84,7 +77,6 @@ def main():
     parser = argparse.ArgumentParser(description='Inter-dataset agreement calculator for relations')
     parser.add_argument('gold_directory', help='First data folder path (gold)')
     parser.add_argument('system_directory', help='Second data folder path (system)')
-    parser.add_argument('-m', '--mode', default='strict', help='strict or lenient (defaults to strict)')
     parser.add_argument('-f', '--format', default='plain', help='format to print the table (options include grid, github, and latex)')
     parser.add_argument('-d', '--decimal', type=int, default=3, help='number of decimal places to round to')
     args = parser.parse_args()
@@ -92,7 +84,7 @@ def main():
     gold_dataset = StatsDataset.from_directory(args.gold_directory)
     system_dataset = StatsDataset.from_directory(args.system_directory)
 
-    result = measure_dataset(gold_dataset, system_dataset, args.mode)
+    result = measure_dataset(gold_dataset, system_dataset)
     output = format_results(result, num_dec=args.decimal, table_format=args.format)
     print(output)
 
