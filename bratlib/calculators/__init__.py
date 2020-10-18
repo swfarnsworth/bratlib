@@ -1,6 +1,5 @@
 import typing as t
-from collections import OrderedDict
-from copy import deepcopy
+from collections import OrderedDict, UserDict
 from dataclasses import dataclass
 from statistics import mean
 
@@ -84,14 +83,19 @@ class Measures:
             return 0.0
 
 
-MeasuresDict = t.DefaultDict[str, Measures]
+class MeasuresDict(UserDict, t.Mapping[str, Measures]):
 
+    def __add__(self, other):
+        if not isinstance(other, MeasuresDict):
+            return NotImplemented
+        result = self.copy()
+        for elem, count in other.items():
+            result[elem] += count
+        return result
 
-def merge_measures_dict(a: MeasuresDict, b: MeasuresDict) -> MeasuresDict:
-    a = deepcopy(a)
-    for k, v in b.items():
-        a[k] += v
-    return a
+    def __missing__(self, key):
+        self[key] = new_measures = Measures()
+        return new_measures
 
 
 def format_results(measures_dict: MeasuresDict, num_dec=3, table_format='plain'):
