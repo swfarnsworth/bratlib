@@ -3,7 +3,7 @@ from collections import defaultdict
 from copy import deepcopy
 from itertools import product
 
-from bratlib.calculators import Measures, MeasuresDict, format_results, merge_measures_dict
+from bratlib.calculators import Measures, MeasuresDict, format_results
 from bratlib.calculators.entity_agreement import ent_equals
 from bratlib.data import BratFile
 from bratlib.data.extensions.file import StatsDataset
@@ -66,11 +66,7 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset) ->
                          for gold, system in zip_datasets(gold_dataset, system_dataset)]
 
     # Combine the Measures objects for each tag from each file together
-    tag_measures = defaultdict(Measures)
-    for file_measures in all_file_measures:
-        tag_measures = merge_measures_dict(tag_measures, file_measures)
-
-    return tag_measures
+    return sum(all_file_measures, Measures())
 
 
 def main():
