@@ -159,15 +159,20 @@ class BratFile:
         return cls(ann_path, txt_path)
 
     @classmethod
-    def from_data(cls):
+    def from_data(cls, entities=None, events=None, relations=None, equivalences=None, attributes=None,
+                  normalizations=None):
         """
         Creates an instance that does not represent an existing file. All data attributes are blank lists that
         can be mutated.
         """
         new = super().__new__(cls)
         super().__init__(new)
-        for attr in ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']:
-            setattr(new, attr, [])
+        new._entities = entities or []
+        new._events = events or []
+        new._relations = relations or []
+        new._equivalences = equivalences or []
+        new._attributes = attributes or []
+        new._normalizations = normalizations or []
         return new
 
     def __repr__(self):
