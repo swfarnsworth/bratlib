@@ -41,13 +41,9 @@ def create_relationship_table_for_file(gold: bd.BratFile, system_a: bd.BratFile,
     sys_b_ents = sorted(system_b.entities)
 
     if gold_ents != sys_a_ents != sys_b_ents:
-        raise RuntimeError(f'These files don\'t have exactly the same set of entities: {gold=}, {system_a=}, {system_b=}')
+        raise RuntimeError(f'These files don\'t have exactly the same set of entities: {gold}, {system_a}, {system_b}')
 
-    lookup_tables = [
-        RelationLookupDict.from_bratfile(gold),
-        RelationLookupDict.from_bratfile(system_a),
-        RelationLookupDict.from_bratfile(system_b)
-    ]
+    lookup_tables = [RelationLookupDict.from_bratfile(b) for b in (gold, system_a, system_b)]
 
     rows: t.List[t.Tuple[str, str, str]] = []
 
