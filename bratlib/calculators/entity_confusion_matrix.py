@@ -8,7 +8,7 @@ from tabulate import tabulate
 from bratlib import data as bd
 from bratlib.tools.iteration import zip_datasets
 
-EntityConfusionMatrix = t.Counter[t.Tuple[str, str]]
+ConfusionMatrix = t.Counter[t.Tuple[str, str]]
 
 
 def generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
@@ -29,17 +29,17 @@ def generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[
     yield from ((g.tag, 'NONE') for g, b in gold_match.items() if not b)
 
 
-def count_file(gold: bd.BratFile, system: bd.BratFile) -> EntityConfusionMatrix:
+def count_file(gold: bd.BratFile, system: bd.BratFile) -> ConfusionMatrix:
     """Creates a confusion matrix-like Counter for one file"""
     return Counter(generate_entity_pairs(gold, system))
 
 
-def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> EntityConfusionMatrix:
+def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> ConfusionMatrix:
     """Creates a confusion matrix-like Counter for a dataset"""
     return sum((count_file(g, s) for g, s in zip_datasets(gold, system)), Counter())
 
 
-def format_results(matrix_data: EntityConfusionMatrix, horizontal=False, red=False) -> str:
+def format_results(matrix_data: ConfusionMatrix, horizontal=False, red=False) -> str:
     ent_types = sorted(set(list(sum(matrix_data.keys(), ()))))
     joiner = ('\n' if not horizontal else '').join
     table_header = ['*'] + [joiner(e) for e in ent_types]
