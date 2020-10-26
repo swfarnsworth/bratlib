@@ -8,6 +8,7 @@ setup(
     description='Data facilitation for BRAT annotations',
     author='Steele Farnsworth',
     install_requires=[
+        'pandas',
         'cached-property',
         'tabulate'
     ]
