@@ -75,9 +75,13 @@ def create_pseduo_relationship_table(real_table: pd.DataFrame) -> pd.DataFrame:
 
 
 def count_pseudo_system(table: pd.DataFrame) -> float:
-    fp = len(table[table['GOLD'] == NO_RELATION].count(1))
-    tp = len(table[table['GOLD'] == table['PSEUDO SYSTEM']].count(1))
-    fn = len(table[(table['GOLD'] != table['PSEUDO SYSTEM']) & (table['GOLD'] != NO_RELATION)].count(1))
+    gold_is_null = table['GOLD'] == NO_RELATION
+    system_is_null = table['PSEUDO SYSTEM'] == NO_RELATION
+    both_null = gold_is_null & system_is_null
+
+    fp = len(table[gold_is_null & ~system_is_null].count(1))
+    tp = len(table[(table['GOLD'] == table['PSEUDO SYSTEM']) & ~both_null].count(1))
+    fn = len(table[system_is_null & ~gold_is_null].count(1))
 
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
