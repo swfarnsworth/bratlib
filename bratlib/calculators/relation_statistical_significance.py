@@ -4,9 +4,9 @@ from collections import UserDict
 from itertools import combinations
 
 import pandas as pd
+import numpy as np
 
 from bratlib import data as bd
-from bratlib.data.extensions.file import StatsDataset
 from bratlib.tools.iteration import zip_datasets
 
 NO_RELATION = 'NO_RELATION'
@@ -61,19 +61,24 @@ def create_relationship_table_for_dataset(gold: bd.BratDataset, system_a: bd.Bra
     return pd.concat(dataframes)
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Inter-dataset agreement calculator for relations')
-    parser.add_argument('gold_directory', help='First data folder path (gold)')
-    parser.add_argument('system_a_directory', help='Second data folder path (system_a)')
-    parser.add_argument('system_b_directory', help='Third data folder path (system_b)')
-    args = parser.parse_args()
+def create_pseduo_relationship_table(real_table: pd.DataFrame) -> pd.DataFrame:
+    """
+    Takes a dataframe of three columns and returns a dataframe of two columns where
+    the first column is always the same, and the second column is a random selection
+    from the other two columns for each row.
+    """
+    two_systems = real_table.iloc[:, 1:3]
+    pseudo_system = two_systems.values[np.arange(len(two_systems)), np.random.randint(-2, 0, size=len(two_systems))]
+    pseudo_system = pd.DataFrame(pseudo_system, columns=['PSEUDO SYSTEM'])
+    new_table = real_table.iloc[:, 0:1].join(pseudo_system.iloc[:, 0:1])
+    return new_table.loc[(new_table != NO_RELATION).any(axis=1)]
 
-    gold_dataset = StatsDataset.from_directory(args.gold_directory)
-    system_a_dataset = StatsDataset.from_directory(args.system_a_directory)
-    system_b_dataset = StatsDataset.from_directory(args.system_b_directory)
 
-    create_relationship_table_for_dataset(gold_dataset, system_a_dataset, system_b_dataset)
+def count_pseudo_system(table: pd.DataFrame) -> float:
+    fp = len(table[table['GOLD'] == NO_RELATION].count(1))
+    tp = len(table[table['GOLD'] == table['PSEUDO SYSTEM']].count(1))
+    fn = len(table[(table['GOLD'] != table['PSEUDO SYSTEM']) & (table['GOLD'] != NO_RELATION)].count(1))
 
-
-if __name__ == '__main__':
-    raise NotImplemented
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    return 2 * (precision * recall) / (precision + recall)
