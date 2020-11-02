@@ -1,9 +1,8 @@
 import argparse
-from collections import defaultdict
 from copy import deepcopy
 from itertools import product
 
-from bratlib.calculators import Measures, MeasuresDict, format_results
+from bratlib.calculators import MeasuresDict, format_results
 from bratlib.calculators.entity_agreement import ent_equals
 from bratlib.data import BratFile
 from bratlib.data.extensions.file import StatsDataset
@@ -25,7 +24,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> MeasuresDict:
         r.arg1.__class__ = ContigEntity
         r.arg2.__class__ = ContigEntity
 
-    measures = defaultdict(Measures)
+    measures = MeasuresDict()
 
     gold_are_matched = {r: False for r in gold_rels}
     sys_are_matched = {r: False for r in system_rels}
@@ -62,11 +61,12 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset) ->
     :return: a dictionary of tag-level Measures objects
     """
 
-    all_file_measures = [measure_ann_file(gold, system)
-                         for gold, system in zip_datasets(gold_dataset, system_dataset)]
+    all_file_measures = MeasuresDict()
 
-    # Combine the Measures objects for each tag from each file together
-    return sum(all_file_measures, Measures())
+    for gold, system in zip_datasets(gold_dataset, system_dataset):
+        all_file_measures += measure_ann_file(gold, system)
+
+    return all_file_measures
 
 
 def main():

@@ -9,11 +9,10 @@ already been paired will not count as false positives.
 """
 
 import argparse
-from collections import defaultdict
 from copy import deepcopy
 from itertools import product
 
-from bratlib.calculators import Measures, MeasuresDict, format_results, merge_measures_dict
+from bratlib.calculators import MeasuresDict, format_results
 from bratlib.data import BratFile
 from bratlib.data.extensions.file import StatsDataset
 from bratlib.data.extensions.instance import ContigEntity
@@ -45,7 +44,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
 
     unmatched_gold = gold_ents.copy()
     unmatched_system = system_ents.copy()
-    measures = defaultdict(Measures)
+    measures = MeasuresDict()
 
     for s, g in product(system_ents, gold_ents):
         if ent_equals(s, g, mode=mode):
@@ -88,17 +87,12 @@ def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mo
     if mode not in ['strict', 'lenient']:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    all_file_measures = []
-    tag_measures = defaultdict(Measures)
+    all_file_measures = MeasuresDict()
 
     for gold, system in zip_datasets(gold_dataset, system_dataset):
-        all_file_measures.append(measure_ann_file(gold, system, mode=mode))
+        all_file_measures += measure_ann_file(gold, system, mode=mode)
 
-    # Combine the Measures objects for each tag from each file together
-    for file_measures in all_file_measures:
-        tag_measures = merge_measures_dict(tag_measures, file_measures)
-
-    return tag_measures
+    return all_file_measures
 
 
 def main():
