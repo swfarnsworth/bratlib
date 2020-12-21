@@ -11,9 +11,13 @@ already been paired will not count as false positives.
 import argparse
 from collections import defaultdict
 from copy import deepcopy
+from functools import reduce
 from itertools import product
+from operator import itemgetter
 
-from bratlib.calculators import Measures, MeasuresDict, format_results, merge_measures_dict
+import pandas as pd
+
+from bratlib.calculators import Measures, calculate_scores
 from bratlib.data import BratFile
 from bratlib.data.extensions.file import StatsDataset
 from bratlib.data.extensions.instance import ContigEntity
@@ -26,13 +30,13 @@ def ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
     return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
 
 
-def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> MeasuresDict:
+def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.DataFrame:
     """
     Calculates tag level measurements for two parallel ann files; it does not score them
     :param ann_1: path to the gold ann file
     :param ann_2: path to the system ann file
     :param mode: strict or lenient
-    :return: a dictionary mapping tags (str) to measurements (Measures)
+    :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
     if mode not in ('strict', 'lenient'):
         raise ValueError("mode must be 'strict' or 'lenient'")
@@ -74,31 +78,26 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> Measure
         # counted as true positives
         measures[tag].fn = [e.tag == tag for e in gold_ents].count(True) - measure.tp
 
-    return measures
+    tabular_data = [(tag, m.tp, m.fp, m.tn, m.fn) for tag, m in sorted(measures.items(), key=itemgetter(0))]
+    return pd.DataFrame(tabular_data, columns=['tag', 'tp', 'fp', 'tn', 'fn']).set_index('tag')
 
 
-def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mode='strict') -> MeasuresDict:
+def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset, mode='strict') -> pd.DataFrame:
     """
     Measures the true positive, false positive, and false negative counts for a directory of predictions
     :param gold_dataset: The gold version of the predicted dataset
     :param system_dataset: The predicted dataset
     :param mode: 'strict' or 'lenient'
-    :return: a dictionary of tag-level Measures objects
+    :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
     if mode not in ['strict', 'lenient']:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    all_file_measures = []
-    tag_measures = defaultdict(Measures)
-
-    for gold, system in zip_datasets(gold_dataset, system_dataset):
-        all_file_measures.append(measure_ann_file(gold, system, mode=mode))
-
-    # Combine the Measures objects for each tag from each file together
-    for file_measures in all_file_measures:
-        tag_measures = merge_measures_dict(tag_measures, file_measures)
-
-    return tag_measures
+    return reduce(
+        lambda x, y: x.add(y, fill_value=0),
+        (measure_ann_file(gold, system, mode=mode)
+         for gold, system in zip_datasets(gold_dataset, system_dataset))
+    )
 
 
 def main():
@@ -106,16 +105,15 @@ def main():
     parser.add_argument('gold_directory', help='First data folder path (gold)')
     parser.add_argument('system_directory', help='Second data folder path (system)')
     parser.add_argument('-m', '--mode', default='strict', help='strict or lenient (defaults to strict)')
-    parser.add_argument('-f', '--format', default='plain', help='format to print the table (options include grid, github, and latex)')
     parser.add_argument('-d', '--decimal', type=int, default=3, help='number of decimal places to round to')
     args = parser.parse_args()
 
     gold_dataset = StatsDataset.from_directory(args.gold_directory)
     system_dataset = StatsDataset.from_directory(args.system_directory)
 
-    result = measure_dataset(gold_dataset, system_dataset, args.mode)
-    output = format_results(result, num_dec=args.decimal, table_format=args.format)
-    print(output)
+    measures = measure_dataset(gold_dataset, system_dataset, args.mode)
+    scores = calculate_scores(measures)
+    print(scores.to_csv(float_format=f'%.{args.decimal}f'))
 
 
 if __name__ == '__main__':
