@@ -15,7 +15,8 @@ PathLike = t.Union[str, os.PathLike]
 
 # Define regexes
 ent_pattern = re.compile(r'(T\d+)\t([^\t]+) ((?:\d+ \d+;)*\d+ \d+)\t(.+)')
-event_pattern = re.compile(r'(?P<id>E\d+)\t(?P<trigger>[^\t:]+):(?P<trigger_ent>T\d+) (?P<items>(?:Org\d:[TRAN]\d+[\s]*)+)')
+event_pattern = re.compile(
+    r'(?P<id>E\d+)\t(?P<trigger>[^\t:]+):(?P<trigger_ent>T\d+) (?P<items>(?:Org\d:[TRAN]\d+[\s]*)+)')
 rel_pattern = re.compile(r'R\d+\t(\S+) Arg1:(T\d+) Arg2:(T\d+)')
 equiv_pattern = re.compile(r'\*\tEquiv ((?:T\d+[\s])+)')
 attrib_pattern = re.compile(r'A\d+\t(\S+) ((?:[TE]\d+[\s])+)')
@@ -23,6 +24,7 @@ norm_pattern = re.compile(r'N\d+\tReference (T\d+) ((?:[^:])+):((?:[^\t])+)\t.+'
 
 # Decorator to streamline comparison operator implementations
 _notimp = except_return(NotImplemented, AttributeError)
+
 
 # Define annotation types
 
@@ -159,15 +161,25 @@ class BratFile:
         return cls(ann_path, txt_path)
 
     @classmethod
-    def from_data(cls):
+    def from_data(cls,
+                  entities: t.Optional[t.List[Entity]] = None,
+                  events: t.Optional[t.List[Event]] = None,
+                  relations: t.Optional[t.List[Relation]] = None,
+                  equivalences: t.Optional[t.List[Equivalence]] = None,
+                  attributes: t.Optional[t.List[Attribute]] = None,
+                  normalizations: t.Optional[t.List[Normalization]] = None,
+                  ):
         """
         Creates an instance that does not represent an existing file. All data attributes are blank lists that
-        can be mutated.
+        can be mutated. These instances are not guaranteed to have an `ann_path` attribute defined.
         """
         new = super().__new__(cls)
         super().__init__(new)
-        for attr in ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']:
-            setattr(new, attr, [])
+        args = [entities, events, relations, equivalences, attributes, normalizations]
+        attrs = ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']
+        for arg, attr in zip(args, attrs):
+            setattr(new, attr, [] if arg is None else arg)
+        new._txt_path = None
         return new
 
     def __repr__(self):

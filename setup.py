@@ -9,6 +9,7 @@ setup(
     author='Steele Farnsworth',
     install_requires=[
         'cached-property',
-        'tabulate'
-    ]
+        'pandas'
+    ],
+    tests_require=['pytest']
 )

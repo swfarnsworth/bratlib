@@ -1,8 +1,8 @@
-import tempfile
-import unittest
-from shutil import rmtree
+import pathlib
 
-from bratlib.data import *
+import pytest
+
+from bratlib import data as bd
 
 sample_doc = """T1\tA 1 2\tlorem
 T2\tB 3 5;5 6\tipsum
@@ -14,69 +14,66 @@ N1\tReference T1 C:1\tlorem
 """
 
 
-class TestData(unittest.TestCase):
+@pytest.fixture
+def ann_file(tmp_path) -> pathlib.Path:
+    ann_path = tmp_path / 'sample.ann'
+    ann_path.write_text(sample_doc)
+    return ann_path
 
-    @classmethod
-    def setUpClass(cls):
-        cls.brat_dir = tempfile.mkdtemp()
-        cls.brat_file = os.path.join(cls.brat_dir, 'file.ann')
-        with open(cls.brat_file, 'w') as f:
-            f.write(sample_doc)
 
-        cls.maxDiff = None
+@pytest.fixture
+def ann_sample(ann_file) -> bd.BratFile:
+    return bd.BratFile.from_ann_path(ann_file)
 
-    @classmethod
-    def tearDownClass(cls):
-        rmtree(cls.brat_dir)
 
-    def test_from_file(self):
+ents_expected = [
+    bd.Entity('A', [(1, 2)], 'lorem'),
+    bd.Entity('B', [(3, 5), (5, 6)], 'ipsum'),
+]
 
-        ents_expected = [
-            Entity('A', [(1, 2)], 'lorem'),
-            Entity('B', [(3, 5), (5, 6)], 'ipsum'),
-        ]
 
-        event_expected = [
-            Event(ents_expected[0], ents_expected[0:2])
-        ]
+def test_entities(ann_sample):
+    assert ann_sample.entities == ents_expected
 
-        rel_expected = [
-            Relation('C', ents_expected[0], ents_expected[1])
-        ]
 
-        equiv_expected = [
-            Equivalence(ents_expected[0:2])
-        ]
+def test_events(ann_sample):
+    event_expected = [
+        bd.Event(ents_expected[0], ents_expected[0:2])
+    ]
+    assert ann_sample.events == event_expected
 
-        attribute_expected = [
-            Attribute('F', [event_expected[0]])
-        ]
 
-        norm_expected = [
-            Normalization(ents_expected[0], 'C', '1')
-        ]
+def test_relations(ann_sample):
+    rel_expected = [
+        bd.Relation('C', ents_expected[0], ents_expected[1])
+    ]
+    assert ann_sample.relations == rel_expected
+    assert ann_sample.relations[0].arg1 is ann_sample.entities[0]
 
-        ann = BratFile.from_ann_path(self.brat_file)
 
-        # Test entities
-        self.assertListEqual(ann.entities, ents_expected)
-        self.assertListEqual([ent.mention for ent in ann.entities], [ent.mention for ent in ents_expected])
+def test_equivalences(ann_sample):
+    equiv_expected = [
+        bd.Equivalence(ents_expected[0:2])
+    ]
+    assert ann_sample.equivalences == equiv_expected
 
-        # Events
-        self.assertListEqual(ann.events, event_expected)
 
-        # Relations
-        self.assertListEqual(ann.relations, rel_expected)
-        self.assertIs(ann.relations[0].arg1, ann.entities[0])
+def test_attributes(ann_sample):
+    event_expected = [
+        bd.Event(ents_expected[0], ents_expected[0:2])
+    ]
+    attribute_expected = [
+        bd.Attribute('F', [event_expected[0]])
+    ]
+    assert ann_sample.attributes == attribute_expected
 
-        # Equivalences
-        self.assertListEqual(ann.equivalences, equiv_expected)
 
-        # Attributes
-        self.assertListEqual(ann.attributes, attribute_expected)
+def test_normalizations(ann_sample):
+    norm_expected = [
+        bd.Normalization(ents_expected[0], 'C', '1')
+    ]
+    assert ann_sample.normalizations == norm_expected
 
-        # Normalizations
-        self.assertListEqual(ann.normalizations, norm_expected)
 
-        # Test __str__
-        self.assertEqual(sample_doc, str(ann))
+def test_bratfile_str(ann_sample):
+    assert str(ann_sample) == sample_doc
