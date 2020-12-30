@@ -10,5 +10,6 @@ setup(
     install_requires=[
         'cached-property',
         'pandas'
-    ]
+    ],
+    tests_require=['pytest']
 )
