@@ -8,19 +8,11 @@ from pathlib import Path
 
 from cached_property import cached_property
 
+from bratlib.data import _patterns
 from bratlib.utils import except_return
 
 # Define types
 PathLike = t.Union[str, os.PathLike]
-
-# Define regexes
-ent_pattern = re.compile(r'(T\d+)\t([^\t]+) ((?:\d+ \d+;)*\d+ \d+)\t(.+)')
-event_pattern = re.compile(
-    r'(?P<id>E\d+)\t(?P<trigger>[^\t:]+):(?P<trigger_ent>T\d+) (?P<items>(?:Org\d:[TRAN]\d+[\s]*)+)')
-rel_pattern = re.compile(r'R\d+\t(\S+) Arg1:(T\d+) Arg2:(T\d+)')
-equiv_pattern = re.compile(r'\*\tEquiv ((?:T\d+[\s])+)')
-attrib_pattern = re.compile(r'A\d+\t(\S+) ((?:[TE]\d+[\s])+)')
-norm_pattern = re.compile(r'N\d+\tReference (T\d+) ((?:[^:])+):((?:[^\t])+)\t.+')
 
 # Decorator to streamline comparison operator implementations
 _notimp = except_return(NotImplemented, AttributeError)
@@ -203,12 +195,12 @@ class BratFile:
         data_dict = {}
 
         # Entities
-        ent_mapping = {match[1]: Entity.from_re(match) for match in ent_pattern.finditer(text)}
+        ent_mapping = {match[1]: Entity.from_re(match) for match in _patterns.ent_pattern.finditer(text)}
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
         events = []
-        for m in event_pattern.finditer(text):
+        for m in _patterns.event_pattern.finditer(text):
             trigger = self._mapping[m['trigger_ent']]
             items = [self._mapping[n[1]] for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
             new_event = Event(trigger, items)
@@ -220,7 +212,7 @@ class BratFile:
         # Relations
         rels = []
 
-        for match in rel_pattern.finditer(text):
+        for match in _patterns.rel_pattern.finditer(text):
             tag = match[1]
             arg1 = self._mapping[match[2]]
             arg2 = self._mapping[match[3]]
@@ -231,7 +223,7 @@ class BratFile:
         # Equivalences
         equivs = []
 
-        for match in equiv_pattern.finditer(text):
+        for match in _patterns.equiv_pattern.finditer(text):
             equiv_entities = [self._mapping[e[0]] for e in re.finditer(r'T\d+', match[1])]
             equiv_entities.sort()
             equivs.append(Equivalence(equiv_entities))
@@ -241,7 +233,7 @@ class BratFile:
         # Attributes
         attrs = []
 
-        for match in attrib_pattern.finditer(text):
+        for match in _patterns.attrib_pattern.finditer(text):
             tag = match[1]
             data = [self._mapping[e[0]] for e in re.finditer(r'[ET]\d+', match[2])]
             attrs.append(Attribute(tag, data))
@@ -250,7 +242,7 @@ class BratFile:
 
         # Normalizations
         data_dict['normalizations'] = sorted(Normalization(ent_mapping[m[1]], m[2], m[3])
-                                             for m in norm_pattern.finditer(text))
+                                             for m in _patterns.norm_pattern.finditer(text))
 
         return data_dict
 
