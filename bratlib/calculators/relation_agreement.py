@@ -9,8 +9,7 @@ import pandas as pd
 
 from bratlib.calculators import calculate_scores, Measures
 from bratlib.calculators.entity_agreement import ent_equals
-from bratlib.data import BratFile
-from bratlib.data.extensions.file import StatsDataset
+from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.instance import ContigEntity
 from bratlib.tools.iteration import zip_datasets
 
@@ -59,7 +58,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
     return pd.DataFrame(tabular_data, columns=['tag', 'tp', 'fp', 'tn', 'fn']).set_index('tag')
 
 
-def measure_dataset(gold_dataset: StatsDataset, system_dataset: StatsDataset) -> pd.DataFrame:
+def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> pd.DataFrame:
     """
     Measures the true positive, false positive, and false negative counts for a directory of predictions
     :param gold_dataset: The gold version of the predicted dataset
@@ -80,8 +79,8 @@ def main():
     parser.add_argument('-d', '--decimal', type=int, default=3, help='number of decimal places to round to')
     args = parser.parse_args()
 
-    gold_dataset = StatsDataset.from_directory(args.gold_directory)
-    system_dataset = StatsDataset.from_directory(args.system_directory)
+    gold_dataset = BratDataset.from_directory(args.gold_directory)
+    system_dataset = BratDataset.from_directory(args.system_directory)
 
     measures = measure_dataset(gold_dataset, system_dataset)
     scores = calculate_scores(measures)

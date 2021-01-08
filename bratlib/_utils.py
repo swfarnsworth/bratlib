@@ -1,4 +1,4 @@
-def except_return(alternative, *exceptions):
+def _except_return(alternative, *exceptions):
 
     def wrap(func):
 
@@ -11,3 +11,7 @@ def except_return(alternative, *exceptions):
         return _wrap
 
     return wrap
+
+
+# Decorator to streamline comparison operator implementations
+_notimp = _except_return(NotImplemented, AttributeError)
