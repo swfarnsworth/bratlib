@@ -13,6 +13,7 @@ _PathLike = t.Union[str, os.PathLike]
 
 
 class NoTxtError(FileNotFoundError):
+    """Raised when a BratFile does not have an associated txt file."""
     pass
 
 

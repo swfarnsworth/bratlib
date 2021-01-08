@@ -7,6 +7,13 @@ _PathLike = t.Union[str, os.PathLike]
 
 
 class BratDataset:
+    """
+    A BratDataset represents a collection of BratFiles, and usually represents a specific directory on a file system.
+
+    :ivar directory: the pathlib.Path of the directory this BratDataset represents.
+    :ivar brat_files: List[BratFile] of the BratFiles in that directory, or which this instance is otherwise meant to
+    represent.
+    """
 
     def __init__(self, dir_path: _PathLike, brat_files: t.List[BratFile]):
         self.directory = Path(dir_path)
