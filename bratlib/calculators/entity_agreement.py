@@ -11,16 +11,14 @@ already been paired will not count as false positives.
 import argparse
 from collections import defaultdict
 from copy import deepcopy
-from functools import reduce
 from itertools import product
 from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators import Measures, calculate_scores
+from bratlib.calculators import Measures, calculate_scores, _merge_dataset_dataframes
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.instance import ContigEntity
-from bratlib.tools.iteration import zip_datasets
 
 
 def ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
@@ -92,11 +90,7 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode
     if mode not in ['strict', 'lenient']:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    return reduce(
-        lambda x, y: x.add(y, fill_value=0),
-        (measure_ann_file(gold, system, mode=mode)
-         for gold, system in zip_datasets(gold_dataset, system_dataset))
-    )
+    return _merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file, mode)
 
 
 def main():
