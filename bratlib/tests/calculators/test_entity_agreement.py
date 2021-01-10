@@ -1,8 +1,7 @@
 import pandas as pd
 
-from bratlib import calculators
 from bratlib import data as bd
-from bratlib.calculators import entity_agreement
+from bratlib.calculators import _utils, entity_agreement
 
 
 def test_entity_agreement():
@@ -75,7 +74,7 @@ def test_dataset_entity_agreement(monkeypatch):
         yield from [(1, 1), (2, 2), (3, 3)]
 
     monkeypatch.setattr(entity_agreement, 'measure_ann_file', mock_generator)
-    monkeypatch.setattr(calculators, 'zip_datasets', mock_generator_two)
+    monkeypatch.setattr(_utils, 'zip_datasets', mock_generator_two)
 
     actual = entity_agreement.measure_dataset(None, None)
 

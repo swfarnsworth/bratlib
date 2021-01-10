@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from bratlib import data as bd
-from bratlib.calculators import _merge_dataset_dataframes
+from bratlib.calculators._utils import _merge_dataset_dataframes
 
 
 def _generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
