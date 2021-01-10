@@ -1,5 +1,6 @@
 import pandas as pd
 
+from bratlib import calculators
 from bratlib import data as bd
 from bratlib.calculators import entity_agreement
 
@@ -35,7 +36,7 @@ def test_entity_agreement():
     ).set_index('tag')
 
     actual = entity_agreement.measure_ann_file(gold, system)
-    pd.testing.assert_frame_equal(expected, actual)
+    pd.testing.assert_frame_equal(expected, actual, check_dtype=False)
 
 
 def test_dataset_entity_agreement(monkeypatch):
@@ -74,7 +75,7 @@ def test_dataset_entity_agreement(monkeypatch):
         yield from [(1, 1), (2, 2), (3, 3)]
 
     monkeypatch.setattr(entity_agreement, 'measure_ann_file', mock_generator)
-    monkeypatch.setattr(entity_agreement, 'zip_datasets', mock_generator_two)
+    monkeypatch.setattr(calculators, 'zip_datasets', mock_generator_two)
 
     actual = entity_agreement.measure_dataset(None, None)
 
@@ -87,4 +88,4 @@ def test_dataset_entity_agreement(monkeypatch):
         columns=['tag', 'tp', 'fp', 'tn', 'fn'], dtype=float
     ).set_index('tag')
 
-    pd.testing.assert_frame_equal(expected, actual)
+    pd.testing.assert_frame_equal(expected, actual, check_dtype=False)

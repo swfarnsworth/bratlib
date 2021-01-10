@@ -47,4 +47,4 @@ def test_relation_agreement():
     ).set_index('tag')
 
     actual = measure_ann_file(gold, system)
-    pd.testing.assert_frame_equal(expected, actual)
+    pd.testing.assert_frame_equal(expected, actual, check_dtype=False)

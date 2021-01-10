@@ -1,17 +1,15 @@
 import argparse
 from collections import defaultdict
 from copy import deepcopy
-from functools import reduce
 from itertools import product
 from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators import calculate_scores, Measures
+from bratlib.calculators import calculate_scores, Measures, _merge_dataset_dataframes
 from bratlib.calculators.entity_agreement import ent_equals
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.instance import ContigEntity
-from bratlib.tools.iteration import zip_datasets
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
@@ -65,11 +63,7 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> p
     :param system_dataset: The predicted dataset
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    return reduce(
-        lambda x, y: x.add(y, fill_value=0).astype('int64'),
-        (measure_ann_file(gold, system)
-         for gold, system in zip_datasets(gold_dataset, system_dataset))
-    )
+    return _merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file)
 
 
 def main():
