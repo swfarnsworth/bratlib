@@ -1,17 +1,15 @@
 import argparse
 import typing as t
-from collections import Counter
 from itertools import product
 
-from tabulate import tabulate
+import numpy as np
+import pandas as pd
 
 from bratlib import data as bd
-from bratlib.tools.iteration import zip_datasets
-
-EntityConfusionMatrix = t.Counter[t.Tuple[str, str]]
+from bratlib.calculators import _merge_dataset_dataframes
 
 
-def generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
+def _generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
     """
     Generates tuples of tags for which entities of those tags were found to overlap.
     When these pairs are exhausted, it generates tuples for all unmatched entities with 'NONE'.
@@ -29,28 +27,25 @@ def generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[
     yield from ((g.tag, 'NONE') for g, b in gold_match.items() if not b)
 
 
-def count_file(gold: bd.BratFile, system: bd.BratFile) -> EntityConfusionMatrix:
-    """Creates a confusion matrix-like Counter for one file"""
-    return Counter(generate_entity_pairs(gold, system))
+def count_file(gold: bd.BratFile, system: bd.BratFile) -> pd.DataFrame:
+    """Creates an entity confusion matrix DataFrame for one document, with gold indices and system columns."""
+    entities = sorted({e.tag for e in gold.entities} | {e.tag for e in system.entities})
+    num_entities = len(entities)
+    table = pd.DataFrame(
+        data=np.zeros((num_entities, num_entities)),
+        index=entities,
+        columns=entities
+    )
+
+    for g, s in _generate_entity_pairs(gold, system):
+        table.loc[g, s] += 1
+
+    return table
 
 
-def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> EntityConfusionMatrix:
-    """Creates a confusion matrix-like Counter for a dataset"""
-    return sum((count_file(g, s) for g, s in zip_datasets(gold, system)), Counter())
-
-
-def format_results(matrix_data: EntityConfusionMatrix, horizontal=False, red=False) -> str:
-    ent_types = sorted(set(list(sum(matrix_data.keys(), ()))))
-    joiner = ('\n' if not horizontal else '').join
-    table_header = ['*'] + [joiner(e) for e in ent_types]
-    table = [table_header]
-
-    for e in ent_types:
-        new_row = [e] + [matrix_data[(e, v)] for v in ent_types]
-        table.append(new_row)
-
-    result = tabulate(table)
-    return result if not red else '\033[1;31;40m' + result + '\033[m'
+def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> pd.DataFrame:
+    """Creates an entity confusion matrix DataFrame for a dataset with gold indices and system columns."""
+    return _merge_dataset_dataframes(gold, system, count_file)
 
 
 def main():
@@ -58,15 +53,17 @@ def main():
     parser.add_argument('gold_directory', help='Directory containing the gold ann files')
     parser.add_argument('system_directory', help='Directory containing the system ann files')
     parser.add_argument('-r', '--red', action='store_true', help='Flag to print the results in red')
-    parser.add_argument('-hl', '--horizontal', action='store_true', help='Print the entity types in the top row horizontally; this will make the table wider')
     args = parser.parse_args()
 
     gold_dataset = bd.BratDataset.from_directory(args.gold_directory)
     system_dataset = bd.BratDataset.from_directory(args.system_directory)
 
-    result = count_dataset(gold_dataset, system_dataset)
-    output = format_results(result, horizontal=args.horizontal, red=args.red)
-    print(output)
+    result = count_dataset(gold_dataset, system_dataset).to_csv(float_format=f'%.{args.decimal}f')
+
+    if args.red:
+        result = f'\033[1;31;40m{result}\033[m'
+
+    print(result)
 
 
 if __name__ == '__main__':
