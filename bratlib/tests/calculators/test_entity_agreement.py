@@ -36,7 +36,7 @@ def test_entity_agreement():
     ).set_index('tag')
 
     actual = entity_agreement.measure_ann_file(gold, system)
-    pd.testing.assert_frame_equal(expected, actual)
+    pd.testing.assert_frame_equal(expected, actual, check_dtype=False)
 
 
 def test_dataset_entity_agreement(monkeypatch):
@@ -88,4 +88,4 @@ def test_dataset_entity_agreement(monkeypatch):
         columns=['tag', 'tp', 'fp', 'tn', 'fn'], dtype=float
     ).set_index('tag')
 
-    pd.testing.assert_frame_equal(expected, actual)
+    pd.testing.assert_frame_equal(expected, actual, check_dtype=False)
