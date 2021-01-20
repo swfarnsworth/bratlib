@@ -1,7 +1,7 @@
 import pandas as pd
 
 from bratlib import data as bd
-from bratlib.tools.validation import validate_bratfile
+from bratlib.tools.validation import validate_bratfile_entities
 
 
 def test_validate_bratfile(tmp_path):
@@ -23,5 +23,5 @@ def test_validate_bratfile(tmp_path):
         {e: b for e, b in zip(entities, [True, True, False, False])},
         orient='index', columns=['match']
     )
-    actual = validate_bratfile(ann)
-    pd.testing.assert_frame_equal(expected, actual)
+    actual = validate_bratfile_entities(ann)
+    pd.testing.assert_frame_equal(expected, actual, check_names=False)
