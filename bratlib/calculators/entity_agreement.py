@@ -16,7 +16,7 @@ from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators import Measures, calculate_scores, _merge_dataset_dataframes
+from bratlib.calculators._utils import Measures, calculate_scores, _merge_dataset_dataframes
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.instance import ContigEntity
 
