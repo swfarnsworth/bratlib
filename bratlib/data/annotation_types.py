@@ -18,7 +18,7 @@ class Entity(AnnData):
     mention: str = field(compare=False)
 
     @classmethod
-    def from_re(cls, match: t.Match):
+    def _from_re(cls, match: t.Match):
         tag = match[2]
 
         # Create list of tuples for every pair of spans

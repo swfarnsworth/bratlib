@@ -103,7 +103,7 @@ class BratFile:
         data_dict = {}
 
         # Entities
-        ent_mapping = {match[1]: Entity.from_re(match) for match in _patterns.ent_pattern.finditer(text)}
+        ent_mapping = {match[1]: Entity._from_re(match) for match in _patterns.ent_pattern.finditer(text)}
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
