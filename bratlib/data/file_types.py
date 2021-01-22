@@ -84,6 +84,10 @@ class BratFile:
             raise NoTxtError('This BratFile does not have an associated txt file.')
         return self._txt_path
 
+    @txt_path.setter
+    def txt_path(self, value):
+        self._txt_path = value
+
     @cached_property
     def _data_dict(self) -> t.Dict[str, t.List[AnnData]]:
         with self.ann_path.open() as f:
