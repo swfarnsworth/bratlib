@@ -17,6 +17,11 @@ class NoTxtError(FileNotFoundError):
     pass
 
 
+class BratParseError(Exception):
+    """Raised when an ann file refers to annotations not found elsewhere in the document."""
+    pass
+
+
 class BratFile:
     """
     BratFiles contain the following attributes for representing data found in their files:
@@ -40,6 +45,13 @@ class BratFile:
         self.name = self.ann_path.stem
 
         self._mapping = {}
+
+    def _lookup_from_mapping(self, value: str):
+        try:
+            return self._mapping[value]
+        except KeyError as e:
+            new_e = BratParseError(f'An annotation refers to {value}, though this does not appear in the .ann file')
+            raise new_e from e
 
     @classmethod
     def from_ann_path(cls, ann_path: _PathLike):
@@ -102,8 +114,8 @@ class BratFile:
 
         events = []
         for m in _patterns.event_pattern.finditer(text):
-            trigger = self._mapping[m['trigger_ent']]
-            items = [self._mapping[n[1]] for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
+            trigger = self._lookup_from_mapping(m['trigger_ent'])
+            items = [self._lookup_from_mapping(n[1]) for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
             new_event = Event(trigger, items)
             self._mapping[m['id']] = new_event
             events.append(new_event)
@@ -115,8 +127,8 @@ class BratFile:
 
         for match in _patterns.rel_pattern.finditer(text):
             tag = match[1]
-            arg1 = self._mapping[match[2]]
-            arg2 = self._mapping[match[3]]
+            arg1 = self._lookup_from_mapping(match[2])
+            arg2 = self._lookup_from_mapping(match[3])
             new_rel = Relation(tag, arg1, arg2)
             rels.append(new_rel)
         data_dict['relations'] = sorted(rels)
@@ -125,7 +137,7 @@ class BratFile:
         equivs = []
 
         for match in _patterns.equiv_pattern.finditer(text):
-            equiv_entities = [self._mapping[e[0]] for e in re.finditer(r'T\d+', match[1])]
+            equiv_entities = [self._lookup_from_mapping(e[0]) for e in re.finditer(r'T\d+', match[1])]
             equiv_entities.sort()
             equivs.append(Equivalence(equiv_entities))
 
@@ -136,7 +148,7 @@ class BratFile:
 
         for match in _patterns.attrib_pattern.finditer(text):
             tag = match[1]
-            data = [self._mapping[e[0]] for e in re.finditer(r'[ET]\d+', match[2])]
+            data = [self._lookup_from_mapping(e[0]) for e in re.finditer(r'[ET]\d+', match[2])]
             attrs.append(Attribute(tag, data))
 
         data_dict['attributes'] = sorted(attrs)
