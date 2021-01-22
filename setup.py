@@ -10,8 +10,13 @@ setup(
     author='Steele Farnsworth',
     install_requires=[
         'cached-property',
-        'pandas',
-        'numpy'
+        'numpy',
+        'pandas'
     ],
-    tests_require=['pytest']
+    tests_require=['pytest'],
+    extras_require={
+        ':python_version == "3.6"': [
+            'dataclasses'
+        ],
+    }
 )
