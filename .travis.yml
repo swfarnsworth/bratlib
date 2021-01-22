@@ -1,0 +1,14 @@
+language: python
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+  - "3.9"
+# command to install dependencies
+install:
+  - pip install --upgrade pip
+  - pip install -e .
+  - pip install pytest
+# command to run tests
+script:
+  - "python -m pytest bratlib/tests"
