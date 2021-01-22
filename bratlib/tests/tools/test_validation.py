@@ -5,6 +5,14 @@ from bratlib import data as bd
 from bratlib.tools.validation import validate_bratfile_entities
 
 
+def _mock_ann_file(ann: bd.BratFile, text: str, name: str, directory) -> None:
+    txt_path = directory / (name + '.txt')
+    ann_path = directory / (name + '.ann')
+    txt_path.write_text(text)
+    ann_path.write_text(str(ann))
+    ann.ann_path, ann._txt_path = ann_path, txt_path
+
+
 @pytest.fixture
 def brat_dataset(tmp_path):
     dataset_path = tmp_path / 'data'
@@ -16,11 +24,7 @@ def brat_dataset(tmp_path):
         bd.Entity('A', [(4, 9)], 'not quick'),
         bd.Entity('A', [(4, 9), (20, 26)], 'not quick jumped'),
     ])
-
-    a_ann, a_txt = (dataset_path / 'a.ann'), (dataset_path / 'a.txt')
-    a_txt.write_text("The quick brown fox jumped over the lazy dog.")
-    a_ann.write_text(str(a_file))
-    a_file.ann_path, a_file._txt_path = a_ann, a_txt
+    _mock_ann_file(a_file, "The quick brown fox jumped over the lazy dog.", 'a', dataset_path)
 
     return bd.BratDataset(dataset_path, [a_file])
 
