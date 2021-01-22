@@ -33,15 +33,12 @@ class BratFile:
     For example, any Relation accessible via `brat_file.relations` refers to two Entities; these are the same
     two Entity objects one would find in `brat_file.entities`.
 
-    Giving a BratFile instance attributes of the same name as these with a leading underscore (so `_entities` instead
-    of `entities`) will cause subsequent accesses of the non-underscore name to return that value.
-
     Accessing the `txt_path` attribute will raise NoTxtError if the instance does not have a txt file.
     """
 
     def __init__(self, ann_path: _PathLike, txt_path: _PathLike):
         self.ann_path = Path(ann_path)
-        self._txt_path = Path(txt_path) if isinstance(txt_path, (str, os.PathLike)) else None
+        self._txt_path = Path(txt_path) if txt_path is not None else None
         self.name = self.ann_path.stem
 
         self._mapping = {}
@@ -102,9 +99,7 @@ class BratFile:
 
     @cached_property
     def _data_dict(self) -> t.Dict[str, t.List[AnnData]]:
-        with self.ann_path.open() as f:
-            text = f.read()
-
+        text = self.ann_path.read_text()
         data_dict = {}
 
         # Entities
@@ -112,7 +107,9 @@ class BratFile:
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
+        # Events
         events = []
+
         for m in _patterns.event_pattern.finditer(text):
             trigger = self._lookup_from_mapping(m['trigger_ent'])
             items = [self._lookup_from_mapping(n[1]) for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
