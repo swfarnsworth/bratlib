@@ -6,14 +6,13 @@ import pandas as pd
 from bratlib.data import BratDataset, BratFile, Entity
 
 
-def _validate_contiguous_entity(ent: Entity, text: str) -> bool:
-    a, b = ent.spans[0]
-    return ent.mention == text[a:b]
-
-
-def _validate_noncontiguous_entity(ent: Entity, text: str) -> bool:
-    mention = r'\s*'.join(re.escape(text[a:b]) for a, b in ent.spans)
-    return bool(re.fullmatch(mention, ent.mention))
+def _validate_entity(ent: Entity, text: str) -> bool:
+    if len(ent.spans) == 1:
+        a, b = ent.spans[0]
+        return ent.mention == text[a:b]
+    else:
+        mention = r'\s*'.join(re.escape(text[a:b]) for a, b in ent.spans)
+        return bool(re.fullmatch(mention, ent.mention))
 
 
 def validate_bratfile_entities(ann: BratFile) -> pd.DataFrame:
@@ -24,25 +23,32 @@ def validate_bratfile_entities(ann: BratFile) -> pd.DataFrame:
     """
     text = ann.txt_path.read_text()
     df = pd.DataFrame.from_dict(
-        {e: (_validate_contiguous_entity if len(e.spans) == 1 else _validate_noncontiguous_entity)(e, text)
-         for e in ann.entities},
+        {e: _validate_entity(e, text) for e in ann.entities},
         orient='index', columns=['match']
     )
     df.index.rename('entity', inplace=True)
     return df
 
 
-def validate_bratdataset_entities(data: BratDataset) -> pd.DataFrame:
+def validate_bratdataset_entities(data: BratDataset, *, invalid_only=True, index_by_path=False) -> pd.DataFrame:
     """
     Validates that mentions align with the given spans for a whole dataset.
-    Returns a DataFrame of (bd.Entity, str) -> bool, where the str is the name of the file
+    Returns a DataFrame of (bd.Entity, str) -> bool, where the str is the stem of the file name
     in which the entity appears.
+
+    :param data: A BratDataset to validate.
+    :param invalid_only: If the resulting DataFrame should only include rows for invalid entities.
+    This can dramatically reduce the memory required.
+    :param index_by_path: If the resulting DataFrame should index using a pathlib.Path object instead of
+    the stem of the file name.
     """
     outer_df = pd.DataFrame()
     for ann in data:
         df = validate_bratfile_entities(ann)
-        df['file_name'] = ann.ann_path.stem
-        outer_df = outer_df.append(df.set_index('file_name', append=True))
+        df['file'] = ann.ann_path.stem if not index_by_path else ann.ann_path
+        if invalid_only:
+            df = df[~df.match]
+        outer_df = outer_df.append(df.set_index('file', append=True))
     return outer_df
 
 

@@ -77,3 +77,19 @@ def test_normalizations(ann_sample):
 
 def test_bratfile_str(ann_sample):
     assert str(ann_sample) == sample_doc
+
+
+def test_brat_parse_error(tmp_path):
+    bad_ann = """T1\tA 1 2\tlorem
+    T2\tB 3 5;5 6\tipsum
+    E1\tA:T1 Org1:T1 Org2:T2
+    R1\tC Arg1:T99 Arg2:T10000
+    *\tEquiv T1 T2
+    A1\tF E1
+    N1\tReference T1 C:1\tlorem
+    """
+    ann_path = tmp_path / 'bad.ann'
+    ann_path.write_text(bad_ann)
+
+    with pytest.raises(bd.BratParseError):
+        bd.BratFile.from_ann_path(ann_path).entities

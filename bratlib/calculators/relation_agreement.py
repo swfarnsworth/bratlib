@@ -9,7 +9,7 @@ import pandas as pd
 from bratlib.calculators._utils import calculate_scores, Measures, _merge_dataset_dataframes
 from bratlib.calculators.entity_agreement import ent_equals
 from bratlib.data import BratDataset, BratFile
-from bratlib.data.extensions.instance import ContigEntity
+from bratlib.data.extensions.annotation_types import ContigEntity
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:

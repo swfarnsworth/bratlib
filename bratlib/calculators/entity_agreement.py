@@ -18,7 +18,7 @@ import pandas as pd
 
 from bratlib.calculators._utils import Measures, calculate_scores, _merge_dataset_dataframes
 from bratlib.data import BratDataset, BratFile
-from bratlib.data.extensions.instance import ContigEntity
+from bratlib.data.extensions.annotation_types import ContigEntity
 
 
 def ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:

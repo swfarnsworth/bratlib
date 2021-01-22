@@ -17,6 +17,11 @@ class NoTxtError(FileNotFoundError):
     pass
 
 
+class BratParseError(Exception):
+    """Raised when an ann file refers to annotations not found elsewhere in the document."""
+    pass
+
+
 class BratFile:
     """
     BratFiles contain the following attributes for representing data found in their files:
@@ -28,18 +33,22 @@ class BratFile:
     For example, any Relation accessible via `brat_file.relations` refers to two Entities; these are the same
     two Entity objects one would find in `brat_file.entities`.
 
-    Giving a BratFile instance attributes of the same name as these with a leading underscore (so `_entities` instead
-    of `entities`) will cause subsequent accesses of the non-underscore name to return that value.
-
     Accessing the `txt_path` attribute will raise NoTxtError if the instance does not have a txt file.
     """
 
     def __init__(self, ann_path: _PathLike, txt_path: _PathLike):
         self.ann_path = Path(ann_path)
-        self._txt_path = Path(txt_path) if isinstance(txt_path, (str, os.PathLike)) else None
+        self._txt_path = Path(txt_path) if txt_path is not None else None
         self.name = self.ann_path.stem
 
         self._mapping = {}
+
+    def _lookup_from_mapping(self, value: str):
+        try:
+            return self._mapping[value]
+        except KeyError as e:
+            new_e = BratParseError(f'An annotation refers to {value}, though this does not appear in the .ann file')
+            raise new_e from e
 
     @classmethod
     def from_ann_path(cls, ann_path: _PathLike):
@@ -84,22 +93,26 @@ class BratFile:
             raise NoTxtError('This BratFile does not have an associated txt file.')
         return self._txt_path
 
+    @txt_path.setter
+    def txt_path(self, value):
+        self._txt_path = value
+
     @cached_property
     def _data_dict(self) -> t.Dict[str, t.List[AnnData]]:
-        with self.ann_path.open() as f:
-            text = f.read()
-
+        text = self.ann_path.read_text()
         data_dict = {}
 
         # Entities
-        ent_mapping = {match[1]: Entity.from_re(match) for match in _patterns.ent_pattern.finditer(text)}
+        ent_mapping = {match[1]: Entity._from_re(match) for match in _patterns.ent_pattern.finditer(text)}
         self._mapping.update(ent_mapping)
         data_dict['entities'] = sorted(ent_mapping.values())
 
+        # Events
         events = []
+
         for m in _patterns.event_pattern.finditer(text):
-            trigger = self._mapping[m['trigger_ent']]
-            items = [self._mapping[n[1]] for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
+            trigger = self._lookup_from_mapping(m['trigger_ent'])
+            items = [self._lookup_from_mapping(n[1]) for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
             new_event = Event(trigger, items)
             self._mapping[m['id']] = new_event
             events.append(new_event)
@@ -111,8 +124,8 @@ class BratFile:
 
         for match in _patterns.rel_pattern.finditer(text):
             tag = match[1]
-            arg1 = self._mapping[match[2]]
-            arg2 = self._mapping[match[3]]
+            arg1 = self._lookup_from_mapping(match[2])
+            arg2 = self._lookup_from_mapping(match[3])
             new_rel = Relation(tag, arg1, arg2)
             rels.append(new_rel)
         data_dict['relations'] = sorted(rels)
@@ -121,7 +134,7 @@ class BratFile:
         equivs = []
 
         for match in _patterns.equiv_pattern.finditer(text):
-            equiv_entities = [self._mapping[e[0]] for e in re.finditer(r'T\d+', match[1])]
+            equiv_entities = [self._lookup_from_mapping(e[0]) for e in re.finditer(r'T\d+', match[1])]
             equiv_entities.sort()
             equivs.append(Equivalence(equiv_entities))
 
@@ -132,7 +145,7 @@ class BratFile:
 
         for match in _patterns.attrib_pattern.finditer(text):
             tag = match[1]
-            data = [self._mapping[e[0]] for e in re.finditer(r'[ET]\d+', match[2])]
+            data = [self._lookup_from_mapping(e[0]) for e in re.finditer(r'[ET]\d+', match[2])]
             attrs.append(Attribute(tag, data))
 
         data_dict['attributes'] = sorted(attrs)
