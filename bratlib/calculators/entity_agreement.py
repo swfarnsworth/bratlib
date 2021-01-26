@@ -9,6 +9,7 @@ already been paired will not count as false positives.
 """
 
 import argparse
+import warnings
 from collections import defaultdict
 from copy import deepcopy
 from itertools import product
@@ -19,6 +20,12 @@ import pandas as pd
 from bratlib.calculators._utils import Measures, calculate_scores, _merge_dataset_dataframes
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
+
+warnings.warn(
+    ('Function `bratlib.calculators.entity_agreement.ent_equals` is intended to be an implementation detail '
+     'and is not guaranteed starting in version 1.'),
+    DeprecationWarning
+)
 
 
 def ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
