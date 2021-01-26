@@ -77,7 +77,7 @@ def main():
     system_dataset = BratDataset.from_directory(args.system_directory)
 
     measures = measure_dataset(gold_dataset, system_dataset)
-    scores = calculate_scores(measures)
+    scores = calculate_scores(measures, macro=True, micro=True)
     print(scores.to_csv(float_format=f'%.{args.decimal}f'))
 
 
