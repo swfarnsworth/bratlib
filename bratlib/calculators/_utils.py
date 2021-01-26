@@ -33,14 +33,28 @@ def _merge_dataset_dataframes(
     )
 
 
-def calculate_scores(counts: pd.DataFrame) -> pd.DataFrame:
+def calculate_scores(counts: pd.DataFrame, *, macro=False, micro=False) -> pd.DataFrame:
     """
     Given a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn'),
     return a new DataFrame of 'tag' -> ('precision', 'recall', 'f1').
+
+    :param counts: pd.DataFrame, see above
+    :param macro: bool to include system macro scores at index `(macro)`, defaults to False
+    :param micro: bool to include system micro scores at index `(micro)`, defaults to False
     """
     precision = counts.tp / (counts.tp + counts.fp)
     recall = counts.tp / (counts.tp + counts.fn)
     f1 = 2 * (precision * recall) / (precision + recall)
     df = pd.concat([precision, recall, f1], axis=1)
     df.columns = ['precision', 'recall', 'f1']
+
+    if macro:
+        df.loc['(macro)'] = df.mean(axis=0)
+
+    if micro:
+        sums = counts.sum(axis=0)
+        precision = sums.tp / (sums.tp + sums.fp)
+        recall = sums.tp / (sums.tp + sums.fn)
+        df.loc['(micro)'] = [precision, recall, 2 * (precision * recall) / (precision + recall)]
+
     return df
