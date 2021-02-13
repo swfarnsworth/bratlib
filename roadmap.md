@@ -13,7 +13,3 @@ the first release that stops supporting earlier Python versions.
 - 3.9
     - Type aliases like `t.List` can be replaced with the actual type.
   
-## Bratlib versions
-
-- 1.0.0
-    - `bratlib.calculators.entity_agreement.ent_equals` should be removed from the public interface.
