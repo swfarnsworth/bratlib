@@ -111,10 +111,13 @@ class BratFile:
         events = []
 
         for m in _patterns.event_pattern.finditer(text):
-            trigger = self._lookup_from_mapping(m['trigger_ent'])
-            items = [self._lookup_from_mapping(n[1]) for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
-            new_event = Event(trigger, items)
-            self._mapping[m['id']] = new_event
+            trigger = self._lookup_from_mapping(m[3])
+            if m[4]:
+                items = {n[1].strip(): self._lookup_from_mapping(n[2]) for n in re.finditer(r'([^\t:]+):(T\d+)', m[4])}
+            else:
+                items = {}
+            new_event = Event(m[2], trigger, items)
+            self._mapping[m[1]] = new_event
             events.append(new_event)
 
         data_dict['events'] = sorted(events)
@@ -198,8 +201,9 @@ class BratFile:
 
         for i, event in enumerate(self.events, 1):
             mappings[event] = f'E{i}'
-            output += f'E{i}\t{event.trigger.tag}:{mappings[event.trigger]} ' + \
-                      space_join(f'Org{j}:{mappings[a]}' for j, a in enumerate(event.arguments, 1)) + '\n'
+            output += f'E{i}\t{event.event_type}:{mappings[event.trigger]}' + \
+                      (' ' if event.arguments.items() else '') + \
+                      space_join(f'{k}:{mappings[v]}' for k, v in event.arguments.items()) + '\n'
 
         for i, rel in enumerate(self.relations, 1):
             mappings[rel] = i

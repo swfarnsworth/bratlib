@@ -42,15 +42,16 @@ class Entity(AnnData):
 
 @dataclass
 class Event(AnnData):
+    event_type: str
     trigger: Entity
-    arguments: t.List[Entity]
+    arguments: t.Dict[str, Entity]
 
     @_notimp
     def __lt__(self, other):
-        return self.trigger < other.trigger
+        return (self.trigger, self.event_type) < (other.trigger, other.event_type)
 
     def __hash__(self):
-        return hash((self.trigger, tuple(self.arguments)))
+        return hash((self.trigger, frozenset(self.arguments.items())))
 
 
 @dataclass(eq=True)
