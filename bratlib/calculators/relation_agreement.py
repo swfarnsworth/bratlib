@@ -6,7 +6,7 @@ from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators._utils import calculate_scores, Measures, _merge_dataset_dataframes
+from bratlib.calculators import _utils
 from bratlib.calculators.entity_agreement import _ent_equals
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
@@ -26,7 +26,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
         r.arg1.__class__ = ContigEntity
         r.arg2.__class__ = ContigEntity
 
-    measures = defaultdict(Measures)
+    measures = defaultdict(_utils.Measures)
 
     gold_are_matched = {r: False for r in gold_rels}
     sys_are_matched = {r: False for r in system_rels}
@@ -63,7 +63,7 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> p
     :param system_dataset: The predicted dataset
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    return _merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file)
+    return _utils.merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file)
 
 
 def main():
@@ -77,7 +77,7 @@ def main():
     system_dataset = BratDataset.from_directory(args.system_directory)
 
     measures = measure_dataset(gold_dataset, system_dataset)
-    scores = calculate_scores(measures, macro=True, micro=True)
+    scores = _utils.calculate_scores(measures, macro=True, micro=True)
     print(scores.to_csv(float_format=f'%.{args.decimal}f'))
 
 

@@ -16,7 +16,7 @@ from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators._utils import Measures, calculate_scores, _merge_dataset_dataframes
+from bratlib.calculators import _utils
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
 
@@ -46,7 +46,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
 
     unmatched_gold = gold_ents.copy()
     unmatched_system = system_ents.copy()
-    measures = defaultdict(Measures)
+    measures = defaultdict(_utils.Measures)
 
     for s, g in product(system_ents, gold_ents):
         if _ent_equals(s, g, mode=mode):
@@ -90,7 +90,7 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode
     if mode not in ['strict', 'lenient']:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    return _merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file, mode)
+    return _utils.merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file, mode)
 
 
 def main():
@@ -105,7 +105,7 @@ def main():
     system_dataset = BratDataset.from_directory(args.system_directory)
 
     measures = measure_dataset(gold_dataset, system_dataset, args.mode)
-    scores = calculate_scores(measures, macro=True, micro=True)
+    scores = _utils.calculate_scores(measures, macro=True, micro=True)
     print(scores.to_csv(float_format=f'%.{args.decimal}f'))
 
 

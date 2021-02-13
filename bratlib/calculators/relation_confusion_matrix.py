@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from bratlib import data as bd
-from bratlib.calculators._utils import _merge_dataset_dataframes
+from bratlib.calculators import _utils
 
 
 def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
@@ -45,7 +45,7 @@ def count_file(gold: bd.BratFile, system: bd.BratFile) -> pd.DataFrame:
 
 def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> pd.DataFrame:
     """Creates a relation confusion matrix DataFrame for a dataset with gold indices and system columns."""
-    return _merge_dataset_dataframes(gold, system, count_file)
+    return _utils.merge_dataset_dataframes(gold, system, count_file)
 
 
 def main():

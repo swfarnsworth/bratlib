@@ -16,7 +16,7 @@ class Measures:
     fn: int = 0
 
 
-def _merge_dataset_dataframes(
+def merge_dataset_dataframes(
         gold: bd.BratDataset,
         system: bd.BratDataset,
         function: t.Callable[[bd.BratFile, bd.BratFile], pd.DataFrame],
