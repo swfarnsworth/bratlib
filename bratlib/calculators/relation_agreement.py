@@ -7,7 +7,7 @@ from operator import itemgetter
 import pandas as pd
 
 from bratlib.calculators._utils import calculate_scores, Measures, _merge_dataset_dataframes
-from bratlib.calculators.entity_agreement import ent_equals
+from bratlib.calculators.entity_agreement import _ent_equals
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
 
@@ -33,7 +33,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
 
     for g, s in product(gold_rels, system_rels):
 
-        if not (ent_equals(g.arg1, s.arg1, mode='strict') and ent_equals(g.arg2, s.arg2, mode='strict')):
+        if not (_ent_equals(g.arg1, s.arg1, mode='strict') and _ent_equals(g.arg2, s.arg2, mode='strict')):
             continue
 
         if g.relation != s.relation:
