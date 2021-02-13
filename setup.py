@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 setup(
     name='bratlib',
     packages=find_packages(),
-    version='0.2.0',
+    version='1.0.0',
     python_requires='>=3.6',
     description='Data facilitation for BRAT annotations',
     author='Steele Farnsworth',
