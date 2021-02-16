@@ -5,8 +5,7 @@ from pathlib import Path
 
 from cached_property import cached_property
 
-from bratlib._utils import _notimp
-from bratlib.data import _patterns
+from bratlib.data import _patterns, _utils
 from bratlib.data.annotation_types import AnnData, Attribute, Entity, Event, Equivalence, Normalization, Relation
 
 _PathLike = t.Union[str, os.PathLike]
@@ -84,7 +83,7 @@ class BratFile:
     def __repr__(self):
         return f'<{self.__class__.__name__}: {self.name}>'
 
-    @_notimp
+    @_utils.return_not_implemented
     def __lt__(self, other):
         return self.name < other.name
 
