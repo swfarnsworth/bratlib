@@ -69,7 +69,8 @@ class BratFile:
                   ):
         """
         Creates an instance that does not represent an existing file. All data attributes are blank lists that
-        can be mutated. These instances are not guaranteed to have an `ann_path` attribute defined.
+        can be mutated. The values for `ann_path` and `name` will belong to `Path` and `str`, respectively,
+        but their properties beyond that are not guaranteed.
         """
         new = super().__new__(cls)
         super().__init__(new)
@@ -77,7 +78,7 @@ class BratFile:
         attrs = ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']
         for arg, attr in zip(args, attrs):
             setattr(new, attr, [] if arg is None else arg)
-        new._txt_path = None
+        new._txt_path, new.ann_path, new.name = None, Path(), 'CREATED_MANUALLY'
         return new
 
     def __repr__(self):
