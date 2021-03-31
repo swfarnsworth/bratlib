@@ -27,7 +27,7 @@ def merge_dataset_dataframes(
     performs that aggregation.
     """
     return reduce(
-        lambda x, y: x.add(y, fill_value=0),
+        lambda x, y: x.add(y, fill_value=0).fillna(0),
         (function(gold, system, *args, **kwargs)
          for gold, system in zip_datasets(gold, system))
     )
