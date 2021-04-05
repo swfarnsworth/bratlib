@@ -2,11 +2,12 @@ import argparse
 import typing as t
 from itertools import product
 
-import numpy as np
 import pandas as pd
 
 from bratlib import data as bd
 from bratlib.calculators import _utils
+
+_NONE = 'NONE'
 
 
 def _generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
@@ -23,21 +24,22 @@ def _generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable
             gold_match[g] = sys_match[s] = True
             yield (g.tag, s.tag)
 
-    yield from (('NONE', s.tag) for s, b in sys_match.items() if not b)
-    yield from ((g.tag, 'NONE') for g, b in gold_match.items() if not b)
+    yield from ((_NONE, s.tag) for s, b in sys_match.items() if not b)
+    yield from ((g.tag, _NONE) for g, b in gold_match.items() if not b)
 
 
-def count_file(gold: bd.BratFile, system: bd.BratFile) -> pd.DataFrame:
+def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> pd.DataFrame:
     """Creates an entity confusion matrix DataFrame for one document, with gold indices and system columns."""
     entities = sorted({e.tag for e in gold.entities} | {e.tag for e in system.entities})
-    num_entities = len(entities)
-    table = pd.DataFrame(
-        data=np.zeros((num_entities, num_entities)),
-        index=entities,
-        columns=entities
-    )
+
+    if include_none:
+        entities.append(_NONE)
+
+    table = pd.DataFrame(index=entities, columns=entities).fillna(0)
 
     for g, s in _generate_entity_pairs(gold, system):
+        if not include_none and _NONE in {g, s}:
+            break
         table.loc[g, s] += 1
 
     return table
@@ -58,7 +60,7 @@ def main():
     gold_dataset = bd.BratDataset.from_directory(args.gold_directory)
     system_dataset = bd.BratDataset.from_directory(args.system_directory)
 
-    result = count_dataset(gold_dataset, system_dataset).to_csv(float_format=f'%.{args.decimal}f')
+    result = count_dataset(gold_dataset, system_dataset).to_csv()
 
     if args.red:
         result = f'\033[1;31;40m{result}\033[m'
