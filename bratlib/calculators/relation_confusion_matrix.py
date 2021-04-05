@@ -2,11 +2,12 @@ import argparse
 import typing as t
 from itertools import product
 
-import numpy as np
 import pandas as pd
 
 from bratlib import data as bd
 from bratlib.calculators import _utils
+
+_NONE = 'NONE'
 
 
 def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
@@ -23,21 +24,22 @@ def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.It
             gold_match[g] = sys_match[s] = True
             yield (g.relation, s.relation)
 
-    yield from (('NONE', s.relation) for s, b in sys_match.items() if not b)
-    yield from ((g.relation, 'NONE') for g, b in gold_match.items() if not b)
+    yield from ((_NONE, s.relation) for s, b in sys_match.items() if not b)
+    yield from ((g.relation, _NONE) for g, b in gold_match.items() if not b)
 
 
-def count_file(gold: bd.BratFile, system: bd.BratFile) -> pd.DataFrame:
+def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> pd.DataFrame:
     """Creates a relation confusion matrix DataFrame for one document, with gold indices and system columns."""
-    realtions = sorted({r.relation for r in gold.relations} | {r.relation for r in system.relations}) + ['NONE']
-    num_relations = len(realtions)
-    table = pd.DataFrame(
-        data=np.zeros((num_relations, num_relations)),
-        index=realtions,
-        columns=realtions
-    )
+    relations = sorted({r.relation for r in gold.relations} | {r.relation for r in system.relations})
+
+    if include_none:
+        relations.append(_NONE)
+
+    table = pd.DataFrame(index=relations, columns=relations).fillna(0)
 
     for g, s in _generate_relationship_pairs(gold, system):
+        if not include_none and _NONE in {g, s}:
+            break
         table.loc[g, s] += 1
 
     return table
@@ -57,8 +59,7 @@ def main():
     gold_dataset = bd.BratDataset.from_directory(args.gold_directory)
     system_dataset = bd.BratDataset.from_directory(args.system_directory)
 
-    result = count_dataset(gold_dataset, system_dataset)
-    print(result.to_csv(float_format=f'%.{args.decimal}f'))
+    print(count_dataset(gold_dataset, system_dataset).to_csv())
 
 
 if __name__ == '__main__':
