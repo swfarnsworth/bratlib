@@ -10,7 +10,6 @@ setup(
     author='Steele Farnsworth',
     install_requires=[
         'cached-property',
-        'numpy',
         'pandas'
     ],
     tests_require=['pytest'],
