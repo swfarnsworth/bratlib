@@ -52,22 +52,24 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     table.index.name = 'tag'
 
     for s, g in product(system_ents, gold_ents):
-        if _ent_equals(s, g, mode=mode):
-            if s not in unmatched_system:
-                # Don't do anything with system predictions that have already been paired
-                continue
+        if not _ent_equals(s, g, mode=mode):
+            continue
 
-            if g in unmatched_gold:
-                # Each gold entity can only be matched to one prediction and
-                # can only count towards the true positive score once
-                unmatched_gold.remove(g)
-                unmatched_system.remove(s)
-                table.loc[s.tag, 'tp'] += 1
-            else:
-                # The entity has been matched to a gold entity, but we have
-                # already gotten the one true positive match allowed for each gold entity;
-                # therefore we say that the predicted entity is now matched
-                unmatched_system.remove(s)
+        if s not in unmatched_system:
+            # Don't do anything with system predictions that have already been paired
+            continue
+
+        if g in unmatched_gold:
+            # Each gold entity can only be matched to one prediction and
+            # can only count towards the true positive score once
+            unmatched_gold.remove(g)
+            unmatched_system.remove(s)
+            table.loc[s.tag, 'tp'] += 1
+        else:
+            # The entity has been matched to a gold entity, but we have
+            # already gotten the one true positive match allowed for each gold entity;
+            # therefore we say that the predicted entity is now matched
+            unmatched_system.remove(s)
 
     # All predictions that don't match any gold entity count one towards the false positive score
     table['fp'] = pd.Series(list(e.tag for e in unmatched_system)).value_counts()
