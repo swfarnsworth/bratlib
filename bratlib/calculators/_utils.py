@@ -1,19 +1,10 @@
 import typing as t
-from dataclasses import dataclass
 from functools import reduce
 
 import pandas as pd
 
 from bratlib import data as bd
 from bratlib.tools.iteration import zip_datasets
-
-
-@dataclass
-class Measures:
-    tp: int = 0
-    fp: int = 0
-    tn: int = 0
-    fn: int = 0
 
 
 def merge_dataset_dataframes(

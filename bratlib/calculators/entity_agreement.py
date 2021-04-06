@@ -9,10 +9,8 @@ already been paired will not count as false positives.
 """
 
 import argparse
-from collections import defaultdict
 from copy import deepcopy
 from itertools import product
-from operator import itemgetter
 
 import pandas as pd
 
@@ -46,7 +44,12 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
 
     unmatched_gold = gold_ents.copy()
     unmatched_system = system_ents.copy()
-    measures = defaultdict(_utils.Measures)
+
+    table = pd.DataFrame(
+        columns=['tp', 'fp', 'tn', 'fn'],
+        index=sorted(set(e.tag for e in gold_ents) | set(e. tag for e in system_ents))
+    ).fillna(0)
+    table.index.name = 'tag'
 
     for s, g in product(system_ents, gold_ents):
         if _ent_equals(s, g, mode=mode):
@@ -59,24 +62,22 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
                 # can only count towards the true positive score once
                 unmatched_gold.remove(g)
                 unmatched_system.remove(s)
-                measures[s.tag].tp += 1
+                table.loc[s.tag, 'tp'] += 1
             else:
                 # The entity has been matched to a gold entity, but we have
                 # already gotten the one true positive match allowed for each gold entity;
                 # therefore we say that the predicted entity is now matched
                 unmatched_system.remove(s)
 
-    for s in unmatched_system:
-        # All predictions that don't match any gold entity count one towards the false positive score
-        measures[s.tag].fp += 1
+    # All predictions that don't match any gold entity count one towards the false positive score
+    table['fp'] = pd.Series(list(e.tag for e in unmatched_system)).value_counts()
+    table['fp'].fillna(0, inplace=True)
 
-    for tag, measure in measures.items():
-        # The number of false negatives is the number of gold entities for a tag minus the number that got
-        # counted as true positives
-        measures[tag].fn = [e.tag == tag for e in gold_ents].count(True) - measure.tp
+    # The number of false negatives is the number of gold entities for a tag minus the number that got
+    # counted as true positives
+    table['fn'] = (pd.Series(e.tag for e in gold_ents).value_counts() - table['tp']).fillna(0)
 
-    tabular_data = [(tag, m.tp, m.fp, m.tn, m.fn) for tag, m in sorted(measures.items(), key=itemgetter(0))]
-    return pd.DataFrame(tabular_data, columns=['tag', 'tp', 'fp', 'tn', 'fn']).set_index('tag')
+    return table.astype(int)
 
 
 def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode='strict') -> pd.DataFrame:

@@ -1,8 +1,6 @@
 import argparse
-from collections import defaultdict
 from copy import deepcopy
 from itertools import product
-from operator import itemgetter
 
 import pandas as pd
 
@@ -26,7 +24,11 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
         r.arg1.__class__ = ContigEntity
         r.arg2.__class__ = ContigEntity
 
-    measures = defaultdict(_utils.Measures)
+    table = pd.DataFrame(
+        columns=['tp', 'fp', 'tn', 'fn'],
+        index=sorted(set(r.relation for r in gold_rels) | set(r.relation for r in system_rels))
+    ).fillna(0)
+    table.index.name = 'tag'
 
     gold_are_matched = {r: False for r in gold_rels}
     sys_are_matched = {r: False for r in system_rels}
@@ -40,20 +42,19 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
             continue
 
         if not gold_are_matched[g]:
-            measures[g.relation].tp += 1
+            table.loc[g.relation, 'tp'] += 1
 
         gold_are_matched[g] = sys_are_matched[s] = True
 
-    for r, b in gold_are_matched.items():
-        # Every gold relationship that doesn't have a match means there's a missing match--a false negative
-        measures[r.relation].fn += 1 if not b else 0
+    # Every gold relationship that doesn't have a match means there's a missing match--a false negative
+    table['fn'] = pd.Series(r.relation for r, b in gold_are_matched.items() if not b).value_counts()
+    table['fn'].fillna(0, inplace=True)
 
-    for r, b in sys_are_matched.items():
-        # Every system relationship that doesn't have a match was incorrect--a false positive
-        measures[r.relation].fp += 1 if not b else 0
+    # Every system relationship that doesn't have a match was incorrect--a false positive
+    table['fp'] = pd.Series(r.relation for r, b in sys_are_matched.items() if not b).value_counts()
+    table['fp'].fillna(0, inplace=True)
 
-    tabular_data = [(tag, m.tp, m.fp, m.tn, m.fn) for tag, m in sorted(measures.items(), key=itemgetter(0))]
-    return pd.DataFrame(tabular_data, columns=['tag', 'tp', 'fp', 'tn', 'fn']).set_index('tag')
+    return table.astype(int)
 
 
 def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> pd.DataFrame:
