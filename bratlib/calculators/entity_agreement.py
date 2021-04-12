@@ -42,8 +42,8 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     for e in (gold_ents + system_ents):
         e.__class__ = ContigEntity
 
-    unmatched_gold = gold_ents.copy()
-    unmatched_system = system_ents.copy()
+    unmatched_gold = set(gold_ents)
+    unmatched_system = set(system_ents)
 
     table = pd.DataFrame(
         columns=['tp', 'fp', 'tn', 'fn'],
@@ -77,7 +77,8 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
 
     # The number of false negatives is the number of gold entities for a tag minus the number that got
     # counted as true positives
-    table['fn'] = pd.Series(e.tag for e in gold_ents).value_counts().subtract(table['tp'], fill_value=0)
+    table['fn'] = pd.Series(e.tag for e in unmatched_gold).value_counts()
+    table['fn'].fillna(0, inplace=True)
 
     return table.astype(int)
 
