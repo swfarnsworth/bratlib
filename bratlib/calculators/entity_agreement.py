@@ -36,16 +36,10 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     if mode not in ('strict', 'lenient'):
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    gold_ents = list(deepcopy(ann_1.entities))
-    system_ents = list(deepcopy(ann_2.entities))
+    unmatched_gold = set(ann_1.entities)
+    unmatched_system = set(ann_2.entities)
 
-    for e in (gold_ents + system_ents):
-        e.__class__ = ContigEntity
-
-    unmatched_gold = set(gold_ents)
-    unmatched_system = set(system_ents)
-
-    index = pd.Index({e.tag for e in gold_ents} | {e.tag for e in system_ents}, name='tag').sort_values()
+    index = pd.Index({e.tag for e in unmatched_gold} | {e.tag for e in unmatched_system}, name='tag').sort_values()
 
     if mode == 'strict':
         return (
@@ -60,6 +54,12 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
             .astype(int)
             .reindex(index)
         )
+
+    gold_ents = list(deepcopy(ann_1.entities))
+    system_ents = list(deepcopy(ann_2.entities))
+
+    for e in (gold_ents + system_ents):
+        e.__class__ = ContigEntity
 
     table = pd.DataFrame(columns=['tp', 'fp', 'tn', 'fn'], index=index).fillna(0)
 
