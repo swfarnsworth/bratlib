@@ -7,6 +7,9 @@ from bratlib import data as bd
 from bratlib.tools.iteration import zip_datasets
 
 
+NONE = 'NONE'
+
+
 def merge_dataset_dataframes(
         gold: bd.BratDataset,
         system: bd.BratDataset,

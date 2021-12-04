@@ -7,8 +7,6 @@ import pandas as pd
 from bratlib import data as bd
 from bratlib.calculators import _utils
 
-_NONE = 'NONE'
-
 
 def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable[t.Tuple[str, str]]:
     """
@@ -24,8 +22,8 @@ def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.It
             gold_match[g] = sys_match[s] = True
             yield (g.relation, s.relation)
 
-    yield from ((_NONE, s.relation) for s, b in sys_match.items() if not b)
-    yield from ((g.relation, _NONE) for g, b in gold_match.items() if not b)
+    yield from ((_utils.NONE, s.relation) for s, b in sys_match.items() if not b)
+    yield from ((g.relation, _utils.NONE) for g, b in gold_match.items() if not b)
 
 
 def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> pd.DataFrame:
@@ -33,12 +31,12 @@ def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) ->
     relations = sorted({r.relation for r in gold.relations} | {r.relation for r in system.relations})
 
     if include_none:
-        relations.append(_NONE)
+        relations.append(_utils.NONE)
 
     table = pd.DataFrame(index=relations, columns=relations).fillna(0)
 
     for g, s in _generate_relationship_pairs(gold, system):
-        if not include_none and _NONE in {g, s}:
+        if not include_none and _utils.NONE in {g, s}:
             break
         table.loc[g, s] += 1
 
