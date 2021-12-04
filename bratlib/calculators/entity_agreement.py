@@ -45,10 +45,23 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     unmatched_gold = set(gold_ents)
     unmatched_system = set(system_ents)
 
-    table = pd.DataFrame(
-        columns=['tp', 'fp', 'tn', 'fn'],
-        index=pd.Index({e.tag for e in gold_ents} | {e.tag for e in system_ents}, name='tag').sort_values()
-    ).fillna(0)
+    index = pd.Index({e.tag for e in gold_ents} | {e.tag for e in system_ents}, name='tag').sort_values()
+
+    if mode == 'strict':
+        return (
+            pd.concat(
+                {
+                    'tp': pd.Series(e.tag for e in unmatched_gold & unmatched_system).value_counts(),
+                    'fp': pd.Series(e.tag for e in unmatched_system - unmatched_gold).value_counts(),
+                    'tn': pd.Series(),
+                    'fn': pd.Series(e.tag for e in unmatched_gold - unmatched_system).value_counts()
+                }, axis=1)
+            .fillna(0)
+            .astype(int)
+            .reindex(index)
+        )
+
+    table = pd.DataFrame(columns=['tp', 'fp', 'tn', 'fn'], index=index).fillna(0)
 
     for s, g in product(system_ents, gold_ents):
         if not _ent_equals(s, g, mode=mode):
