@@ -71,15 +71,13 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
             unmatched_system.remove(s)
 
     # All predictions that don't match any gold entity count one towards the false positive score
-    table['fp'] = pd.Series(e.tag for e in unmatched_system).value_counts()
-    table['fp'].fillna(0, inplace=True)
+    table['fp'] += pd.Series(e.tag for e in unmatched_system).value_counts()
 
     # The number of false negatives is the number of gold entities for a tag minus the number that got
     # counted as true positives
-    table['fn'] = pd.Series(e.tag for e in unmatched_gold).value_counts()
-    table['fn'].fillna(0, inplace=True)
+    table['fn'] += pd.Series(e.tag for e in unmatched_gold).value_counts()
 
-    return table.astype(int)
+    return table.fillna(0).astype(int)
 
 
 def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode='strict') -> pd.DataFrame:

@@ -46,14 +46,12 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
         gold_are_matched[g] = sys_are_matched[s] = True
 
     # Every gold relationship that doesn't have a match means there's a missing match--a false negative
-    table['fn'] = pd.Series(r.relation for r, b in gold_are_matched.items() if not b).value_counts()
-    table['fn'].fillna(0, inplace=True)
+    table['fn'] += pd.Series(r.relation for r, b in gold_are_matched.items() if not b).value_counts()
 
     # Every system relationship that doesn't have a match was incorrect--a false positive
-    table['fp'] = pd.Series(r.relation for r, b in sys_are_matched.items() if not b).value_counts()
-    table['fp'].fillna(0, inplace=True)
+    table['fp'] += pd.Series(r.relation for r, b in sys_are_matched.items() if not b).value_counts()
 
-    return table.astype(int)
+    return table.fillna(0).astype(int)
 
 
 def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> pd.DataFrame:
