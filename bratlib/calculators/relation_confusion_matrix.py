@@ -28,12 +28,11 @@ def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.It
 
 def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> pd.DataFrame:
     """Creates a relation confusion matrix DataFrame for one document, with gold indices and system columns."""
-    relations = sorted({r.relation for r in gold.relations} | {r.relation for r in system.relations})
-
+    relations = {r.relation for r in gold.relations} | {r.relation for r in system.relations}
     if include_none:
-        relations.append(_utils.NONE)
+        relations.add(_utils.NONE)
 
-    table = pd.DataFrame(index=relations, columns=relations).fillna(0)
+    table = _utils.matrix_dataframe(relations)
 
     for g, s in _generate_relationship_pairs(gold, system):
         if not include_none and _utils.NONE in {g, s}:

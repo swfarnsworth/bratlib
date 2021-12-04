@@ -29,12 +29,11 @@ def _generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable
 
 def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> pd.DataFrame:
     """Creates an entity confusion matrix DataFrame for one document, with gold indices and system columns."""
-    entities = sorted({e.tag for e in gold.entities} | {e.tag for e in system.entities})
-
+    entities = {e.tag for e in gold.entities} | {e.tag for e in system.entities}
     if include_none:
-        entities.append(_utils.NONE)
+        entities.add(_utils.NONE)
 
-    table = pd.DataFrame(index=entities, columns=entities).fillna(0)
+    table = _utils.matrix_dataframe(entities)
 
     for g, s in _generate_entity_pairs(gold, system):
         if not include_none and _utils.NONE in {g, s}:

@@ -52,3 +52,11 @@ def calculate_scores(counts: pd.DataFrame, *, macro=False, micro=False) -> pd.Da
         df.loc['(micro)'] = [precision, recall, 2 * (precision * recall) / (precision + recall)]
 
     return df
+
+
+def matrix_dataframe(labels: t.Iterable[str]) -> pd.DataFrame:
+    index = pd.Index(labels).drop_duplicates().sort_values()
+    return pd.DataFrame(
+        index=index.rename('actual'),
+        columns=index.rename('predicted')
+    ).fillna(0)

@@ -41,4 +41,4 @@ with_none_expected = pd.DataFrame([
 @pytest.mark.parametrize("expected, use_none", [(with_none_expected, True), (without_none_expected, False)])
 def test_entity_confusion_matrix(expected, use_none):
     actual = count_file(gold, system, include_none=use_none)
-    pd.testing.assert_frame_equal(expected, actual, check_dtype=False)
+    pd.testing.assert_frame_equal(expected, actual, check_dtype=False, check_names=False)
