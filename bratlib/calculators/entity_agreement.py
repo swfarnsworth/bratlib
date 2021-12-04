@@ -39,7 +39,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     unmatched_gold = set(ann_1.entities)
     unmatched_system = set(ann_2.entities)
 
-    index = pd.Index({e.tag for e in unmatched_gold} | {e.tag for e in unmatched_system}, name='tag').sort_values()
+    index = pd.Index({e.tag for e in unmatched_gold | unmatched_system}, name='tag').sort_values()
 
     if mode == 'strict':
         return (
