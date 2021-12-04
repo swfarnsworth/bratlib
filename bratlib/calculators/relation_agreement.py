@@ -26,9 +26,8 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
 
     table = pd.DataFrame(
         columns=['tp', 'fp', 'tn', 'fn'],
-        index=sorted(set(r.relation for r in gold_rels) | set(r.relation for r in system_rels))
+        index=pd.Index({r.relation for r in gold_rels} | {r.relation for r in system_rels}, name='tag').sort_values()
     ).fillna(0)
-    table.index.name = 'tag'
 
     gold_are_matched = {r: False for r in gold_rels}
     sys_are_matched = {r: False for r in system_rels}
