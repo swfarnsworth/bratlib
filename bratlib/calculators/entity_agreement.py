@@ -33,7 +33,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     :param mode: strict or lenient
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    if mode not in ('strict', 'lenient'):
+    if mode not in _utils.MODES:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
     unmatched_gold = set(ann_1.entities)
@@ -49,7 +49,9 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
                     'fp': pd.Series(e.tag for e in unmatched_system - unmatched_gold).value_counts(),
                     'tn': pd.Series(),
                     'fn': pd.Series(e.tag for e in unmatched_gold - unmatched_system).value_counts()
-                }, axis=1)
+                },
+                axis=1
+            )
             .fillna(0)
             .astype(int)
             .reindex(index)
@@ -101,7 +103,7 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode
     :param mode: 'strict' or 'lenient'
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    if mode not in ['strict', 'lenient']:
+    if mode not in _utils.MODES:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
     return _utils.merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file, mode)
