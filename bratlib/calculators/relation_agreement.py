@@ -5,9 +5,12 @@ from itertools import product
 import pandas as pd
 
 from bratlib.calculators import _utils
-from bratlib.calculators.entity_agreement import _ent_equals
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
+
+
+def _ent_equals(a: ContigEntity, b: ContigEntity):
+    return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
@@ -34,7 +37,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
 
     for g, s in product(gold_rels, system_rels):
 
-        if not (_ent_equals(g.arg1, s.arg1, mode='strict') and _ent_equals(g.arg2, s.arg2, mode='strict')):
+        if not (_ent_equals(g.arg1, s.arg1) and _ent_equals(g.arg2, s.arg2)):
             continue
 
         if g.relation != s.relation:

@@ -10,6 +10,7 @@ NONE = 'NONE'
 
 MODES = ('strict', 'lenient')
 
+
 def merge_dataset_dataframes(
     gold: bd.BratDataset,
     system: bd.BratDataset,

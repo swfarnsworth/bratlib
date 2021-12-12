@@ -19,10 +19,8 @@ from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
 
 
-def _ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
-    if mode == 'lenient':
-        return a.tag == b.tag and ((a.end > b.start and a.start < b.end) or (a.start < b.end and b.start < a.end))
-    return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
+def _ent_strict_equals(a: ContigEntity, b: ContigEntity) -> bool:
+    return a.tag == b.tag and ((a.end > b.start and a.start < b.end) or (a.start < b.end and b.start < a.end))
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.DataFrame:
@@ -36,8 +34,14 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     if mode not in _utils.MODES:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    unmatched_gold = set(ann_1.entities)
-    unmatched_system = set(ann_2.entities)
+    gold_ents = list(deepcopy(ann_1.entities))
+    system_ents = list(deepcopy(ann_2.entities))
+
+    for e in (gold_ents + system_ents):
+        e.__class__ = ContigEntity
+
+    unmatched_gold = set(gold_ents)
+    unmatched_system = set(system_ents)
 
     index = pd.Index({e.tag for e in unmatched_gold | unmatched_system}, name='tag').sort_values()
 
@@ -52,21 +56,15 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
                 },
                 axis=1
             )
+            .reindex(index)
             .fillna(0)
             .astype(int)
-            .reindex(index)
         )
-
-    gold_ents = list(deepcopy(ann_1.entities))
-    system_ents = list(deepcopy(ann_2.entities))
-
-    for e in (gold_ents + system_ents):
-        e.__class__ = ContigEntity
 
     table = pd.DataFrame(columns=['tp', 'fp', 'tn', 'fn'], index=index).fillna(0)
 
     for s, g in product(system_ents, gold_ents):
-        if not _ent_equals(s, g, mode=mode):
+        if not _ent_strict_equals(s, g):
             continue
 
         if s not in unmatched_system:
