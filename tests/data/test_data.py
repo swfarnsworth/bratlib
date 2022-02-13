@@ -7,6 +7,8 @@ from bratlib import data as bd
 sample_doc = """T1\tA 1 2\tlorem
 T2\tB 3 5;5 6\tipsum
 E1\tA:T1 Org1:T1 Org2:T2
+E2\tEggs:T1 Spam:T2
+E3\tFoo:T1
 R1\tC Arg1:T1 Arg2:T2
 *\tEquiv T1 T2
 A1\tF E1
@@ -31,15 +33,18 @@ ents_expected = [
     bd.Entity('B', [(3, 5), (5, 6)], 'ipsum'),
 ]
 
+event_expected = [
+    bd.Event('A', ents_expected[0], {'Org1': ents_expected[0], 'Org2': ents_expected[1]}),
+    bd.Event('Eggs', ents_expected[0], {'Spam': ents_expected[1]}),
+    bd.Event('Foo', ents_expected[0], {})
+]
+
 
 def test_entities(ann_sample):
     assert ann_sample.entities == ents_expected
 
 
 def test_events(ann_sample):
-    event_expected = [
-        bd.Event(ents_expected[0], ents_expected[0:2])
-    ]
     assert ann_sample.events == event_expected
 
 
@@ -59,9 +64,6 @@ def test_equivalences(ann_sample):
 
 
 def test_attributes(ann_sample):
-    event_expected = [
-        bd.Event(ents_expected[0], ents_expected[0:2])
-    ]
     attribute_expected = [
         bd.Attribute('F', [event_expected[0]])
     ]

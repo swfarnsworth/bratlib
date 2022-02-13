@@ -1,15 +1,16 @@
 import argparse
-from collections import defaultdict
 from copy import deepcopy
 from itertools import product
-from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators._utils import calculate_scores, Measures, _merge_dataset_dataframes
-from bratlib.calculators.entity_agreement import ent_equals
+from bratlib.calculators import _utils
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
+
+
+def _ent_equals(a: ContigEntity, b: ContigEntity):
+    return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
@@ -26,34 +27,34 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
         r.arg1.__class__ = ContigEntity
         r.arg2.__class__ = ContigEntity
 
-    measures = defaultdict(Measures)
+    table = pd.DataFrame(
+        columns=['tp', 'fp', 'tn', 'fn'],
+        index=pd.Index({r.relation for r in gold_rels} | {r.relation for r in system_rels}, name='tag').sort_values()
+    ).fillna(0)
 
     gold_are_matched = {r: False for r in gold_rels}
     sys_are_matched = {r: False for r in system_rels}
 
     for g, s in product(gold_rels, system_rels):
 
-        if not (ent_equals(g.arg1, s.arg1, mode='strict') and ent_equals(g.arg2, s.arg2, mode='strict')):
+        if not (_ent_equals(g.arg1, s.arg1) and _ent_equals(g.arg2, s.arg2)):
             continue
 
         if g.relation != s.relation:
             continue
 
         if not gold_are_matched[g]:
-            measures[g.relation].tp += 1
+            table.loc[g.relation, 'tp'] += 1
 
         gold_are_matched[g] = sys_are_matched[s] = True
 
-    for r, b in gold_are_matched.items():
-        # Every gold relationship that doesn't have a match means there's a missing match--a false negative
-        measures[r.relation].fn += 1 if not b else 0
+    # Every gold relationship that doesn't have a match means there's a missing match--a false negative
+    table['fn'] += pd.Series(r.relation for r, b in gold_are_matched.items() if not b).value_counts()
 
-    for r, b in sys_are_matched.items():
-        # Every system relationship that doesn't have a match was incorrect--a false positive
-        measures[r.relation].fp += 1 if not b else 0
+    # Every system relationship that doesn't have a match was incorrect--a false positive
+    table['fp'] += pd.Series(r.relation for r, b in sys_are_matched.items() if not b).value_counts()
 
-    tabular_data = [(tag, m.tp, m.fp, m.tn, m.fn) for tag, m in sorted(measures.items(), key=itemgetter(0))]
-    return pd.DataFrame(tabular_data, columns=['tag', 'tp', 'fp', 'tn', 'fn']).set_index('tag')
+    return table.fillna(0).astype(int)
 
 
 def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> pd.DataFrame:
@@ -63,7 +64,7 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> p
     :param system_dataset: The predicted dataset
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    return _merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file)
+    return _utils.merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file)
 
 
 def main():
@@ -77,7 +78,7 @@ def main():
     system_dataset = BratDataset.from_directory(args.system_directory)
 
     measures = measure_dataset(gold_dataset, system_dataset)
-    scores = calculate_scores(measures)
+    scores = _utils.calculate_scores(measures, macro=True, micro=True)
     print(scores.to_csv(float_format=f'%.{args.decimal}f'))
 
 

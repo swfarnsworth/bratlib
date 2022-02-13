@@ -9,22 +9,18 @@ already been paired will not count as false positives.
 """
 
 import argparse
-from collections import defaultdict
 from copy import deepcopy
 from itertools import product
-from operator import itemgetter
 
 import pandas as pd
 
-from bratlib.calculators._utils import Measures, calculate_scores, _merge_dataset_dataframes
+from bratlib.calculators import _utils
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
 
 
-def ent_equals(a: ContigEntity, b: ContigEntity, mode='strict') -> bool:
-    if mode == 'lenient':
-        return a.tag == b.tag and ((a.end > b.start and a.start < b.end) or (a.start < b.end and b.start < a.end))
-    return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
+def _ent_strict_equals(a: ContigEntity, b: ContigEntity) -> bool:
+    return a.tag == b.tag and ((a.end > b.start and a.start < b.end) or (a.start < b.end and b.start < a.end))
 
 
 def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.DataFrame:
@@ -35,7 +31,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     :param mode: strict or lenient
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    if mode not in ('strict', 'lenient'):
+    if mode not in _utils.MODES:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
     gold_ents = list(deepcopy(ann_1.entities))
@@ -44,39 +40,57 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> pd.Data
     for e in (gold_ents + system_ents):
         e.__class__ = ContigEntity
 
-    unmatched_gold = gold_ents.copy()
-    unmatched_system = system_ents.copy()
-    measures = defaultdict(Measures)
+    unmatched_gold = set(gold_ents)
+    unmatched_system = set(system_ents)
+
+    index = pd.Index({e.tag for e in unmatched_gold | unmatched_system}, name='tag').sort_values()
+
+    if mode == 'strict':
+        return (
+            pd.concat(
+                {
+                    'tp': pd.Series(e.tag for e in unmatched_gold & unmatched_system).value_counts(),
+                    'fp': pd.Series(e.tag for e in unmatched_system - unmatched_gold).value_counts(),
+                    'tn': pd.Series(),
+                    'fn': pd.Series(e.tag for e in unmatched_gold - unmatched_system).value_counts()
+                },
+                axis=1
+            )
+            .reindex(index)
+            .fillna(0)
+            .astype(int)
+        )
+
+    table = pd.DataFrame(columns=['tp', 'fp', 'tn', 'fn'], index=index).fillna(0)
 
     for s, g in product(system_ents, gold_ents):
-        if ent_equals(s, g, mode=mode):
-            if s not in unmatched_system:
-                # Don't do anything with system predictions that have already been paired
-                continue
+        if not _ent_strict_equals(s, g):
+            continue
 
-            if g in unmatched_gold:
-                # Each gold entity can only be matched to one prediction and
-                # can only count towards the true positive score once
-                unmatched_gold.remove(g)
-                unmatched_system.remove(s)
-                measures[s.tag].tp += 1
-            else:
-                # The entity has been matched to a gold entity, but we have
-                # already gotten the one true positive match allowed for each gold entity;
-                # therefore we say that the predicted entity is now matched
-                unmatched_system.remove(s)
+        if s not in unmatched_system:
+            # Don't do anything with system predictions that have already been paired
+            continue
 
-    for s in unmatched_system:
-        # All predictions that don't match any gold entity count one towards the false positive score
-        measures[s.tag].fp += 1
+        if g in unmatched_gold:
+            # Each gold entity can only be matched to one prediction and
+            # can only count towards the true positive score once
+            unmatched_gold.remove(g)
+            unmatched_system.remove(s)
+            table.loc[s.tag, 'tp'] += 1
+        else:
+            # The entity has been matched to a gold entity, but we have
+            # already gotten the one true positive match allowed for each gold entity;
+            # therefore we say that the predicted entity is now matched
+            unmatched_system.remove(s)
 
-    for tag, measure in measures.items():
-        # The number of false negatives is the number of gold entities for a tag minus the number that got
-        # counted as true positives
-        measures[tag].fn = [e.tag == tag for e in gold_ents].count(True) - measure.tp
+    # All predictions that don't match any gold entity count one towards the false positive score
+    table['fp'] += pd.Series(e.tag for e in unmatched_system).value_counts()
 
-    tabular_data = [(tag, m.tp, m.fp, m.tn, m.fn) for tag, m in sorted(measures.items(), key=itemgetter(0))]
-    return pd.DataFrame(tabular_data, columns=['tag', 'tp', 'fp', 'tn', 'fn']).set_index('tag')
+    # The number of false negatives is the number of gold entities for a tag minus the number that got
+    # counted as true positives
+    table['fn'] += pd.Series(e.tag for e in unmatched_gold).value_counts()
+
+    return table.fillna(0).astype(int)
 
 
 def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode='strict') -> pd.DataFrame:
@@ -87,10 +101,10 @@ def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode
     :param mode: 'strict' or 'lenient'
     :return: a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn')
     """
-    if mode not in ['strict', 'lenient']:
+    if mode not in _utils.MODES:
         raise ValueError("mode must be 'strict' or 'lenient'")
 
-    return _merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file, mode)
+    return _utils.merge_dataset_dataframes(gold_dataset, system_dataset, measure_ann_file, mode)
 
 
 def main():
@@ -105,7 +119,7 @@ def main():
     system_dataset = BratDataset.from_directory(args.system_directory)
 
     measures = measure_dataset(gold_dataset, system_dataset, args.mode)
-    scores = calculate_scores(measures)
+    scores = _utils.calculate_scores(measures, macro=True, micro=True)
     print(scores.to_csv(float_format=f'%.{args.decimal}f'))
 
 

@@ -5,8 +5,7 @@ from pathlib import Path
 
 from cached_property import cached_property
 
-from bratlib._utils import _notimp
-from bratlib.data import _patterns
+from bratlib.data import _patterns, _utils
 from bratlib.data.annotation_types import AnnData, Attribute, Entity, Event, Equivalence, Normalization, Relation
 
 _PathLike = t.Union[str, os.PathLike]
@@ -69,7 +68,8 @@ class BratFile:
                   ):
         """
         Creates an instance that does not represent an existing file. All data attributes are blank lists that
-        can be mutated. These instances are not guaranteed to have an `ann_path` attribute defined.
+        can be mutated. The values for `ann_path` and `name` will belong to `Path` and `str`, respectively,
+        but their properties beyond that are not guaranteed.
         """
         new = super().__new__(cls)
         super().__init__(new)
@@ -77,13 +77,13 @@ class BratFile:
         attrs = ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']
         for arg, attr in zip(args, attrs):
             setattr(new, attr, [] if arg is None else arg)
-        new._txt_path = None
+        new._txt_path, new.ann_path, new.name = None, Path(), 'CREATED_MANUALLY'
         return new
 
     def __repr__(self):
         return f'<{self.__class__.__name__}: {self.name}>'
 
-    @_notimp
+    @_utils.return_not_implemented
     def __lt__(self, other):
         return self.name < other.name
 
@@ -111,10 +111,13 @@ class BratFile:
         events = []
 
         for m in _patterns.event_pattern.finditer(text):
-            trigger = self._lookup_from_mapping(m['trigger_ent'])
-            items = [self._lookup_from_mapping(n[1]) for n in re.finditer(r'Org\d:([TRAN]\d+)', m['items'])]
-            new_event = Event(trigger, items)
-            self._mapping[m['id']] = new_event
+            trigger = self._lookup_from_mapping(m[3])
+            if m[4]:
+                items = {n[1].strip(): self._lookup_from_mapping(n[2]) for n in re.finditer(r'([^\t:]+):(T\d+)', m[4])}
+            else:
+                items = {}
+            new_event = Event(m[2], trigger, items)
+            self._mapping[m[1]] = new_event
             events.append(new_event)
 
         data_dict['events'] = sorted(events)
@@ -198,8 +201,9 @@ class BratFile:
 
         for i, event in enumerate(self.events, 1):
             mappings[event] = f'E{i}'
-            output += f'E{i}\t{event.trigger.tag}:{mappings[event.trigger]} ' + \
-                      space_join(f'Org{j}:{mappings[a]}' for j, a in enumerate(event.arguments, 1)) + '\n'
+            output += f'E{i}\t{event.event_type}:{mappings[event.trigger]}' + \
+                      (' ' if event.arguments.items() else '') + \
+                      space_join(f'{k}:{mappings[v]}' for k, v in event.arguments.items()) + '\n'
 
         for i, rel in enumerate(self.relations, 1):
             mappings[rel] = i

@@ -18,3 +18,13 @@ class ContigEntity(Entity):
     @end.setter
     def end(self, value):
         self.spans[-1] = self.spans[-1][0], value
+
+    def __hash__(self):
+        return hash((self.tag, self.spans[0][0], self.spans[-1][-1], self.mention))
+
+    def __eq__(self, other):
+        return (
+            (self.tag, self.spans[0][0], self.spans[-1][-1], self.mention)
+            ==
+            (other.tag, other.spans[0][0], other.spans[-1][-1], other.mention)
+        )

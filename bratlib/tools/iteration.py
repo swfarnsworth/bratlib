@@ -1,6 +1,6 @@
-from operator import and_, attrgetter
-from functools import reduce
 import typing as t
+from functools import reduce
+from operator import and_, attrgetter
 
 from bratlib.data import BratDataset
 
