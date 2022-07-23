@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import typing as t
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from bratlib.data import _patterns, _utils
 from bratlib.data.annotation_types import AnnData, Attribute, Entity, Event, Equivalence, Normalization, Relation
 
 _PathLike = t.Union[str, os.PathLike]
+_default_encoding = sys.getdefaultencoding()
 
 
 class NoTxtError(FileNotFoundError):
@@ -35,12 +37,13 @@ class BratFile:
     Accessing the `txt_path` attribute will raise NoTxtError if the instance does not have a txt file.
     """
 
-    def __init__(self, ann_path: _PathLike, txt_path: _PathLike):
+    def __init__(self, ann_path: _PathLike, txt_path: _PathLike, *, encoding: str = _default_encoding):
         self.ann_path = Path(ann_path)
         self._txt_path = Path(txt_path) if txt_path is not None else None
         self.name = self.ann_path.stem
 
         self._mapping = {}
+        self._encoding = encoding
 
     def _lookup_from_mapping(self, value: str):
         try:
@@ -50,12 +53,12 @@ class BratFile:
             raise new_e from e
 
     @classmethod
-    def from_ann_path(cls, ann_path: _PathLike):
+    def from_ann_path(cls, ann_path: _PathLike, *, encoding: str = _default_encoding):
         """Automatically pairs the ann file with a txt file if one by the same name exists in the directory"""
         ann_path = Path(ann_path)
         possible_txt = Path(str(ann_path).rstrip('ann') + 'txt')
         txt_path = possible_txt if possible_txt.exists() else None
-        return cls(ann_path, txt_path)
+        return cls(ann_path, txt_path, encoding=encoding)
 
     @classmethod
     def from_data(cls,
@@ -99,7 +102,7 @@ class BratFile:
 
     @cached_property
     def _data_dict(self) -> t.Dict[str, t.List[AnnData]]:
-        text = self.ann_path.read_text()
+        text = self.ann_path.read_text(encoding=self._encoding)
         data_dict = {}
 
         # Entities
