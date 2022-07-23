@@ -7,16 +7,19 @@ from bratlib import data as bd
 from bratlib.tools.iteration import zip_datasets
 
 NONE = 'NONE'
-
 MODES = ('strict', 'lenient')
+
+CountsDataFrame = t.NewType('CountsDataFrame', pd.DataFrame)
+ScoresDataFrame = t.NewType('ScoresDataFrame', pd.DataFrame)
+ConfusionMatrixDataFrame = t.NewType('ConfusionMatrixDataFrame', pd.DataFrame)
 
 
 def merge_dataset_dataframes(
     gold: bd.BratDataset,
     system: bd.BratDataset,
-    function: t.Callable[[bd.BratFile, bd.BratFile], pd.DataFrame],
+    function: t.Callable[[bd.BratFile, bd.BratFile], t.Union[CountsDataFrame, ConfusionMatrixDataFrame]],
     *args, **kwargs
-):
+) -> t.Union[CountsDataFrame, ConfusionMatrixDataFrame]:
     """
     For any calculator function that ultimately aggregates dataframes from file-level comparisons, this function
     performs that aggregation.
@@ -28,7 +31,7 @@ def merge_dataset_dataframes(
     )
 
 
-def calculate_scores(counts: pd.DataFrame, *, macro=False, micro=False) -> pd.DataFrame:
+def calculate_scores(counts: CountsDataFrame, *, macro=False, micro=False) -> ScoresDataFrame:
     """
     Given a DataFrame of 'tag' -> ('tp', 'fp', 'tn', 'fn'),
     return a new DataFrame of 'tag' -> ('precision', 'recall', 'f1').
@@ -41,7 +44,8 @@ def calculate_scores(counts: pd.DataFrame, *, macro=False, micro=False) -> pd.Da
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
 
-    df = pd.concat(
+    # noinspection PyTypeChecker
+    df: ScoresDataFrame = pd.concat(
         {
             'precision': precision,
             'recall': recall,
@@ -61,9 +65,12 @@ def calculate_scores(counts: pd.DataFrame, *, macro=False, micro=False) -> pd.Da
     return df
 
 
-def matrix_dataframe(labels: t.Iterable[str]) -> pd.DataFrame:
+def matrix_dataframe(labels: t.Iterable[str]) -> ConfusionMatrixDataFrame:
     index = pd.Index(labels).drop_duplicates().sort_values()
-    return pd.DataFrame(
-        index=index.rename('actual'),
-        columns=index.rename('predicted')
-    ).fillna(0)
+    return (
+        pd.DataFrame(
+            index=index.rename('actual'),
+            columns=index.rename('predicted')
+        )
+        .fillna(0)
+    )

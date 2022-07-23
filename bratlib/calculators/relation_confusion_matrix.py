@@ -26,7 +26,7 @@ def _generate_relationship_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.It
     yield from ((g.relation, _utils.NONE) for g, b in gold_match.items() if not b)
 
 
-def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> pd.DataFrame:
+def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> _utils.ConfusionMatrixDataFrame:
     """Creates a relation confusion matrix DataFrame for one document, with gold indices and system columns."""
     relations = {r.relation for r in gold.relations} | {r.relation for r in system.relations}
     if include_none:
@@ -42,7 +42,7 @@ def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) ->
     return table
 
 
-def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> pd.DataFrame:
+def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> _utils.ConfusionMatrixDataFrame:
     """Creates a relation confusion matrix DataFrame for a dataset with gold indices and system columns."""
     return _utils.merge_dataset_dataframes(gold, system, count_file)
 

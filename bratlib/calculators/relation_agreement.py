@@ -13,7 +13,7 @@ def _ent_equals(a: ContigEntity, b: ContigEntity):
     return (a.tag, a.start, a.end) == (b.tag, b.start, b.end)
 
 
-def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
+def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> _utils.CountsDataFrame:
     """
     Calculates tag level measurements for two parallel ann files; it does not score them
     :param ann_1: path to the gold ann file
@@ -57,7 +57,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile) -> pd.DataFrame:
     return table.fillna(0).astype(int)
 
 
-def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> pd.DataFrame:
+def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset) -> _utils.CountsDataFrame:
     """
     Measures the true positive, false positive, and false negative counts for a directory of predictions
     :param gold_dataset: The gold version of the predicted dataset
