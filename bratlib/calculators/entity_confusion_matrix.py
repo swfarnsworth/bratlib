@@ -2,6 +2,7 @@ import argparse
 import typing as t
 from itertools import product
 
+import bratlib.calculators.types
 from bratlib import data as bd
 from bratlib.calculators import _utils
 
@@ -24,7 +25,7 @@ def _generate_entity_pairs(gold: bd.BratFile, system: bd.BratFile) -> t.Iterable
     yield from ((g.tag, _utils.NONE) for g, b in gold_match.items() if not b)
 
 
-def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> _utils.ConfusionMatrixDataFrame:
+def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) -> bratlib.calculators.types.ConfusionMatrixDataFrame:
     """Creates an entity confusion matrix DataFrame for one document, with gold indices and system columns."""
     entities = {e.tag for e in gold.entities} | {e.tag for e in system.entities}
     if include_none:
@@ -40,7 +41,7 @@ def count_file(gold: bd.BratFile, system: bd.BratFile, *, include_none=False) ->
     return table
 
 
-def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> _utils.ConfusionMatrixDataFrame:
+def count_dataset(gold: bd.BratDataset, system: bd.BratDataset) -> bratlib.calculators.types.ConfusionMatrixDataFrame:
     """Creates an entity confusion matrix DataFrame for a dataset with gold indices and system columns."""
     return _utils.merge_dataset_dataframes(gold, system, count_file)
 

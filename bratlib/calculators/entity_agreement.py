@@ -14,6 +14,7 @@ from itertools import product
 
 import pandas as pd
 
+import bratlib.calculators.types
 from bratlib.calculators import _utils
 from bratlib.data import BratDataset, BratFile
 from bratlib.data.extensions.annotation_types import ContigEntity
@@ -23,7 +24,7 @@ def _ent_strict_equals(a: ContigEntity, b: ContigEntity) -> bool:
     return a.tag == b.tag and ((a.end > b.start and a.start < b.end) or (a.start < b.end and b.start < a.end))
 
 
-def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> _utils.CountsDataFrame:
+def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> bratlib.calculators.types.CountsDataFrame:
     """
     Calculates tag level measurements for two parallel ann files; it does not score them
     :param ann_1: path to the gold ann file
@@ -93,7 +94,7 @@ def measure_ann_file(ann_1: BratFile, ann_2: BratFile, mode='strict') -> _utils.
     return table.fillna(0).astype(int)
 
 
-def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode='strict') -> _utils.CountsDataFrame:
+def measure_dataset(gold_dataset: BratDataset, system_dataset: BratDataset, mode='strict') -> bratlib.calculators.types.CountsDataFrame:
     """
     Measures the true positive, false positive, and false negative counts for a directory of predictions
     :param gold_dataset: The gold version of the predicted dataset

@@ -4,14 +4,11 @@ from functools import reduce
 import pandas as pd
 
 from bratlib import data as bd
+from bratlib.calculators.types import CountsDataFrame, ScoresDataFrame, ConfusionMatrixDataFrame
 from bratlib.tools.iteration import zip_datasets
 
 NONE = 'NONE'
 MODES = ('strict', 'lenient')
-
-CountsDataFrame = t.NewType('CountsDataFrame', pd.DataFrame)
-ScoresDataFrame = t.NewType('ScoresDataFrame', pd.DataFrame)
-ConfusionMatrixDataFrame = t.NewType('ConfusionMatrixDataFrame', pd.DataFrame)
 
 
 def merge_dataset_dataframes(
