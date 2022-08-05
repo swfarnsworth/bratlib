@@ -61,14 +61,16 @@ class BratFile:
         return cls(ann_path, txt_path, encoding=encoding)
 
     @classmethod
-    def from_data(cls,
-                  entities: t.Optional[t.List[Entity]] = None,
-                  events: t.Optional[t.List[Event]] = None,
-                  relations: t.Optional[t.List[Relation]] = None,
-                  equivalences: t.Optional[t.List[Equivalence]] = None,
-                  attributes: t.Optional[t.List[Attribute]] = None,
-                  normalizations: t.Optional[t.List[Normalization]] = None,
-                  ):
+    def from_data(
+        cls,
+        entities: t.Optional[t.List[Entity]] = None,
+        events: t.Optional[t.List[Event]] = None,
+        relations: t.Optional[t.List[Relation]] = None,
+        equivalences: t.Optional[t.List[Equivalence]] = None,
+        attributes: t.Optional[t.List[Attribute]] = None,
+        normalizations: t.Optional[t.List[Normalization]] = None,
+        txt_path: t.Optional[_PathLike] = None
+    ):
         """
         Creates an instance that does not represent an existing file. All data attributes are blank lists that
         can be mutated. The values for `ann_path` and `name` will belong to `Path` and `str`, respectively,
@@ -80,7 +82,7 @@ class BratFile:
         attrs = ['_entities', '_events', '_relations', '_equivalences', '_attributes', '_normalizations']
         for arg, attr in zip(args, attrs):
             setattr(new, attr, [] if arg is None else arg)
-        new._txt_path, new.ann_path, new.name = None, Path(), 'CREATED_MANUALLY'
+        new._txt_path, new.ann_path, new.name = txt_path, None, 'CREATED_MANUALLY'
         return new
 
     def __repr__(self):
